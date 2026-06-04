@@ -23,6 +23,22 @@ header()  { echo -e "\n${BOLD}${PURPLE}══ $* ══${NC}"; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ── Detect the real user even when called via sudo ────────────────
+# $HOME and $USER are root's when the script runs under sudo.
+# SUDO_USER is preserved by sudo and gives us the actual caller.
+if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
+    REAL_USER="$SUDO_USER"
+    REAL_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+else
+    REAL_USER="${USER:-root}"
+    REAL_HOME="${HOME}"
+fi
+
+# ── Prevent apt interactive prompts (causes silent freezes) ───────
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+export APT_LISTBUGS_FRONTEND=none
+
 # ── Detect or select distro base ─────────────────────────────────
 detect_distro() {
     header "Detecting distro"
@@ -59,15 +75,12 @@ detect_distro() {
 
     case $BASE in
         debian)
-            PM_UPDATE="sudo apt update && sudo apt upgrade -y"
-            PM_INSTALL="sudo apt install -y"
+            PM_INSTALL="sudo apt-get install -y -q"
             ;;
         fedora)
-            PM_UPDATE="sudo dnf upgrade -y"
             PM_INSTALL="sudo dnf install -y"
             ;;
         arch)
-            PM_UPDATE="sudo pacman -Syu --noconfirm"
             PM_INSTALL="sudo pacman -S --noconfirm --needed"
             AUR_HELPER=""
             ;;
@@ -122,7 +135,19 @@ select_de() {
 # ── System update ────────────────────────────────────────────────
 update_system() {
     header "Updating system packages"
-    eval "$PM_UPDATE"
+    info "Running package manager update (this may take a moment)..."
+    case $BASE in
+        debian)
+            sudo apt-get update -qq
+            sudo apt-get upgrade -y -q
+            ;;
+        fedora)
+            sudo dnf upgrade -y
+            ;;
+        arch)
+            sudo pacman -Syu --noconfirm
+            ;;
+    esac
     success "System up to date"
 }
 
@@ -214,19 +239,21 @@ install_i3() {
             ;;
     esac
 
-    # Deploy i3 config
-    mkdir -p "$HOME/.config/i3"
-    cp "${SCRIPT_DIR}/configs/i3/config" "$HOME/.config/i3/config"
+    # Deploy configs to the real user's home (not /root)
+    info "Deploying configs to ${REAL_HOME}..."
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/i3"
+    cp "${SCRIPT_DIR}/configs/i3/config" "$REAL_HOME/.config/i3/config"
+    chown "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/i3/config"
 
-    # Deploy picom config
-    mkdir -p "$HOME/.config/picom"
-    cp "${SCRIPT_DIR}/configs/picom.conf" "$HOME/.config/picom/picom.conf"
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/picom"
+    cp "${SCRIPT_DIR}/configs/picom.conf" "$REAL_HOME/.config/picom/picom.conf"
+    chown "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/picom/picom.conf"
 
-    # Deploy rofi theme
-    mkdir -p "$HOME/.config/rofi"
-    cp "${SCRIPT_DIR}/configs/rofi/launcher.rasi" "$HOME/.config/rofi/launcher.rasi"
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/rofi"
+    cp "${SCRIPT_DIR}/configs/rofi/launcher.rasi" "$REAL_HOME/.config/rofi/launcher.rasi"
+    chown "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/rofi/launcher.rasi"
 
-    success "i3 installed and configured"
+    success "i3 installed and configured for user: ${REAL_USER}"
 }
 
 # ── KDE Plasma (minimal desktop + sddm) ──────────────────────────
@@ -307,7 +334,7 @@ install_browsers() {
     header "Installing browsers"
 
     # ── Firefox ──────────────────────────────────────────────────
-    # Try native package first; fall back to Flatpak
+    info "Installing Firefox..."
     FIREFOX_OK=false
     case $BASE in
         debian)
@@ -365,7 +392,7 @@ https://brave-browser-apt-release.s3.brave.com/ stable main" \
     success "Brave installed"
 
     # ── Librewolf — Flatpak primary, native repo fallback ─────────
-    LIBREWOLF_OK=false
+    info "Installing Librewolf..."
     if flatpak install -y flathub io.gitlab.librewolf-community.LibreWolf 2>/dev/null; then
         LIBREWOLF_OK=true
     else
@@ -564,14 +591,12 @@ install_dev_tools() {
     esac
 
     # Node.js via nvm (version manager)
-    if ! command -v nvm &>/dev/null && [ ! -d "$HOME/.nvm" ]; then
-        info "Installing nvm + Node.js LTS..."
-        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-        export NVM_DIR="$HOME/.nvm"
-        # shellcheck source=/dev/null
-        source "$NVM_DIR/nvm.sh" || true
-        nvm install --lts
-        nvm use --lts
+    if [ ! -d "$REAL_HOME/.nvm" ]; then
+        info "Installing nvm + Node.js LTS for ${REAL_USER}..."
+        sudo -u "$REAL_USER" bash -c \
+            'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
+        sudo -u "$REAL_USER" bash -c \
+            'export NVM_DIR="$HOME/.nvm"; source "$NVM_DIR/nvm.sh"; nvm install --lts; nvm use --lts'
         success "Node.js LTS installed via nvm"
     else
         info "nvm already present — skipping Node.js install"
@@ -589,7 +614,7 @@ install_dev_tools() {
     if ! command -v docker &>/dev/null; then
         info "Installing Docker..."
         curl -fsSL https://get.docker.com | sudo sh
-        sudo usermod -aG docker "$USER"
+        sudo usermod -aG docker "$REAL_USER"
         sudo systemctl enable --now docker
         success "Docker installed (re-login required for group membership)"
     else
@@ -605,11 +630,10 @@ install_dev_tools() {
     esac
 
     # Rust via rustup
-    if ! command -v rustup &>/dev/null; then
-        info "Installing Rust via rustup..."
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-        # shellcheck source=/dev/null
-        source "$HOME/.cargo/env" 2>/dev/null || true
+    if [ ! -d "$REAL_HOME/.cargo" ]; then
+        info "Installing Rust via rustup for ${REAL_USER}..."
+        sudo -u "$REAL_USER" bash -c \
+            'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path'
         success "Rust installed"
     else
         info "Rust already installed"
@@ -631,12 +655,13 @@ install_dev_tools() {
     esac
 
     # Java via SDKMAN (manages multiple JDK versions)
-    if ! command -v sdk &>/dev/null && [ ! -d "$HOME/.sdkman" ]; then
+    if ! command -v sdk &>/dev/null && [ ! -d "$REAL_HOME/.sdkman" ]; then
         info "Installing SDKMAN and Java LTS (Temurin)..."
-        curl -s "https://get.sdkman.io" | bash
+        sudo -u "$REAL_USER" bash -c 'curl -s "https://get.sdkman.io" | bash'
         # shellcheck source=/dev/null
-        source "$HOME/.sdkman/bin/sdkman-init.sh" 2>/dev/null || true
-        sdk install java 21.0.3-tem   # Eclipse Temurin JDK 21 LTS
+        source "$REAL_HOME/.sdkman/bin/sdkman-init.sh" 2>/dev/null || true
+        sudo -u "$REAL_USER" bash -c \
+            'source "$HOME/.sdkman/bin/sdkman-init.sh" && sdk install java 21.0.3-tem'
         success "Java 21 LTS installed via SDKMAN"
     else
         info "SDKMAN already present — skipping Java install"
@@ -674,6 +699,7 @@ install_dev_tools() {
 # ── Fastfetch ─────────────────────────────────────────────────────
 install_fastfetch() {
     header "Installing fastfetch"
+    info "Downloading fastfetch..."
 
     case $BASE in
         debian)
@@ -694,35 +720,46 @@ install_fastfetch() {
             ;;
     esac
 
-    # Deploy config and ASCII art
-    mkdir -p "$HOME/.config/fastfetch"
-    cp "${SCRIPT_DIR}/configs/fastfetch/config.jsonc" "$HOME/.config/fastfetch/config.jsonc"
-    cp "${SCRIPT_DIR}/configs/fastfetch/wolf.txt"     "$HOME/.config/fastfetch/wolf.txt"
+    # Deploy config and ASCII art to the real user's home
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/fastfetch"
+    cp "${SCRIPT_DIR}/configs/fastfetch/config.jsonc" "$REAL_HOME/.config/fastfetch/config.jsonc"
+    cp "${SCRIPT_DIR}/configs/fastfetch/wolf.txt"     "$REAL_HOME/.config/fastfetch/wolf.txt"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/fastfetch"
 
-    success "fastfetch installed and configured"
+    success "fastfetch installed and configured for user: ${REAL_USER}"
 }
 
 # ── Shell profile updates ─────────────────────────────────────────
 update_shell() {
     header "Updating shell profile"
 
-    # Detect active shell RC file
-    SHELL_RC="$HOME/.bashrc"
-    [ -n "${ZSH_VERSION:-}" ] && SHELL_RC="$HOME/.zshrc"
-    [ -f "$HOME/.zshrc" ]    && SHELL_RC="$HOME/.zshrc"
+    # Detect the real user's login shell and RC file
+    REAL_SHELL=$(getent passwd "$REAL_USER" | cut -d: -f7 2>/dev/null || echo "/bin/bash")
+    if echo "$REAL_SHELL" | grep -q zsh; then
+        SHELL_RC="$REAL_HOME/.zshrc"
+    elif [ -f "$REAL_HOME/.zshrc" ]; then
+        SHELL_RC="$REAL_HOME/.zshrc"
+    else
+        SHELL_RC="$REAL_HOME/.bashrc"
+    fi
+
+    # Create the file if it doesn't exist yet
+    [ -f "$SHELL_RC" ] || sudo -u "$REAL_USER" touch "$SHELL_RC"
+
+    info "Updating ${SHELL_RC}"
 
     # fastfetch on terminal start
     grep -qF 'fastfetch' "$SHELL_RC" \
         || echo -e '\n# Show system info on terminal start\n[ -z "$TMUX" ] && fastfetch' >> "$SHELL_RC"
 
     # nvm
-    grep -qF 'NVM_DIR' "$SHELL_RC" || cat <<'EOF' >> "$SHELL_RC"
+    grep -qF 'NVM_DIR' "$SHELL_RC" || cat >> "$SHELL_RC" <<'SHELLEOF'
 
 # nvm
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-EOF
+SHELLEOF
 
     # Rust
     grep -qF 'cargo/env' "$SHELL_RC" \
@@ -735,14 +772,17 @@ EOF
     }
 
     # SDKMAN (Java)
-    grep -qF 'sdkman-init.sh' "$SHELL_RC" || cat <<'EOF' >> "$SHELL_RC"
+    grep -qF 'sdkman-init.sh' "$SHELL_RC" || cat >> "$SHELL_RC" <<'SHELLEOF'
 
 # SDKMAN (Java / JVM tooling)
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]] && source "$SDKMAN_DIR/bin/sdkman-init.sh"
-EOF
+SHELLEOF
 
-    success "Shell profile updated (${SHELL_RC})"
+    # Fix ownership so the real user can write their own RC
+    chown "$REAL_USER:$REAL_USER" "$SHELL_RC"
+
+    success "Shell profile updated: ${SHELL_RC} (user: ${REAL_USER})"
 }
 
 # ── Summary ───────────────────────────────────────────────────────
@@ -765,7 +805,8 @@ print_summary() {
     echo "  System     : Flatpak/Flathub, fastfetch"
     echo ""
     warn "Re-login (or reboot) for Docker group, nvm, and cargo PATH to take effect."
-    if $INSTALL_I3; then info "i3 configs: ~/.config/i3/  ~/.config/rofi/  ~/.config/picom/"; fi
+    if $INSTALL_I3; then info "i3 configs deployed to: ${REAL_HOME}/.config/{i3,rofi,picom}"; fi
+    info "All configs installed for user: ${REAL_USER}"
 }
 
 # ── Main ──────────────────────────────────────────────────────────
