@@ -306,41 +306,100 @@ install_cinnamon() {
 install_browsers() {
     header "Installing browsers"
 
-    # Firefox
-    case $BASE in
-        debian) $PM_INSTALL firefox ;;
-        fedora) $PM_INSTALL firefox ;;
-        arch)   $PM_INSTALL firefox ;;
-    esac
-    success "Firefox installed"
-
-    # Brave
+    # ── Firefox ──────────────────────────────────────────────────
+    # Try native package first; fall back to Flatpak
+    FIREFOX_OK=false
     case $BASE in
         debian)
-            sudo install -m 0755 -d /etc/apt/keyrings
-            curl -fsSLo /etc/apt/keyrings/brave-browser-archive-keyring.gpg \
-                https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
-            echo "deb [signed-by=/etc/apt/keyrings/brave-browser-archive-keyring.gpg arch=amd64] \
-https://brave-browser-apt-release.s3.brave.com/ stable main" \
-                | sudo tee /etc/apt/sources.list.d/brave-browser.list > /dev/null
-            sudo apt update
-            $PM_INSTALL brave-browser
+            if $PM_INSTALL firefox 2>/dev/null; then
+                FIREFOX_OK=true
+            elif $PM_INSTALL firefox-esr 2>/dev/null; then
+                FIREFOX_OK=true
+            fi
             ;;
         fedora)
-            sudo dnf config-manager \
-                --add-repo https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
-            sudo rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
-            $PM_INSTALL brave-browser
+            if $PM_INSTALL firefox 2>/dev/null; then FIREFOX_OK=true; fi
             ;;
         arch)
-            aur_install brave-bin
+            if $PM_INSTALL firefox 2>/dev/null; then FIREFOX_OK=true; fi
             ;;
     esac
+    if ! $FIREFOX_OK; then
+        warn "Native Firefox unavailable — installing via Flatpak"
+        flatpak install -y flathub org.mozilla.firefox
+    fi
+    success "Firefox installed"
+
+    # ── Brave ─────────────────────────────────────────────────────
+    # Try official repo; fall back to Flatpak
+    BRAVE_OK=false
+    case $BASE in
+        debian)
+            if sudo install -m 0755 -d /etc/apt/keyrings \
+                && curl -fsSLo /etc/apt/keyrings/brave-browser-archive-keyring.gpg \
+                    https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg \
+                && echo "deb [signed-by=/etc/apt/keyrings/brave-browser-archive-keyring.gpg arch=amd64] \
+https://brave-browser-apt-release.s3.brave.com/ stable main" \
+                    | sudo tee /etc/apt/sources.list.d/brave-browser.list > /dev/null \
+                && sudo apt update \
+                && $PM_INSTALL brave-browser 2>/dev/null; then
+                BRAVE_OK=true
+            fi
+            ;;
+        fedora)
+            if sudo dnf config-manager \
+                    --add-repo https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo \
+                && sudo rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc \
+                && $PM_INSTALL brave-browser 2>/dev/null; then
+                BRAVE_OK=true
+            fi
+            ;;
+        arch)
+            if aur_install brave-bin 2>/dev/null; then BRAVE_OK=true; fi
+            ;;
+    esac
+    if ! $BRAVE_OK; then
+        warn "Native Brave install failed — installing via Flatpak"
+        flatpak install -y flathub com.brave.Browser
+    fi
     success "Brave installed"
 
-    # Librewolf — Flatpak is the most reliable cross-distro method
-    flatpak install -y flathub io.gitlab.librewolf-community.LibreWolf
-    success "Librewolf installed (Flatpak)"
+    # ── Librewolf — Flatpak primary, native repo fallback ─────────
+    LIBREWOLF_OK=false
+    if flatpak install -y flathub io.gitlab.librewolf-community.LibreWolf 2>/dev/null; then
+        LIBREWOLF_OK=true
+    else
+        warn "Flatpak Librewolf unavailable — trying native repo"
+        case $BASE in
+            debian)
+                if curl -fsSLo /etc/apt/keyrings/librewolf.gpg \
+                        https://deb.librewolf.net/keyring.gpg \
+                    && echo "deb [signed-by=/etc/apt/keyrings/librewolf.gpg arch=amd64] \
+https://deb.librewolf.net $(. /etc/os-release && echo $VERSION_CODENAME) main" \
+                        | sudo tee /etc/apt/sources.list.d/librewolf.list > /dev/null \
+                    && sudo apt update \
+                    && $PM_INSTALL librewolf 2>/dev/null; then
+                    LIBREWOLF_OK=true
+                fi
+                ;;
+            fedora)
+                if sudo rpm --import https://rpm.librewolf.net/pubkey.gpg \
+                    && sudo dnf config-manager \
+                        --add-repo https://rpm.librewolf.net/librewolf-repo.repo \
+                    && $PM_INSTALL librewolf 2>/dev/null; then
+                    LIBREWOLF_OK=true
+                fi
+                ;;
+            arch)
+                if aur_install librewolf-bin 2>/dev/null; then LIBREWOLF_OK=true; fi
+                ;;
+        esac
+    fi
+    if $LIBREWOLF_OK; then
+        success "Librewolf installed"
+    else
+        warn "Librewolf could not be installed — download manually from https://librewolf.net"
+    fi
 }
 
 # ── Terminal editors ──────────────────────────────────────────────
