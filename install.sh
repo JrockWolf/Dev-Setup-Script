@@ -712,26 +712,53 @@ install_dev_tools() {
 # ── Fastfetch ─────────────────────────────────────────────────────
 install_fastfetch() {
     header "Installing fastfetch"
-    info "Downloading fastfetch..."
+
+    FF_INSTALLED=false
 
     case $BASE in
         debian)
-            FF_URL=$(curl -s https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
-                | grep -oP '"browser_download_url": "\K[^"]+linux-amd64\.deb')
-            curl -Lo /tmp/fastfetch.deb "$FF_URL"
-            sudo dpkg -i /tmp/fastfetch.deb
+            info "Trying fastfetch from apt (available in Trixie+)..."
+            if sudo apt-get install -y -q fastfetch 2>/dev/null; then
+                FF_INSTALLED=true
+            else
+                info "Not in repos — downloading from GitHub releases..."
+                FF_URL=$(curl -s --max-time 15 \
+                    https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
+                    | grep -oP '"browser_download_url":\s*"\K[^"]+linux-amd64\.deb' \
+                    | head -1)
+                if [ -n "$FF_URL" ]; then
+                    curl -Lo /tmp/fastfetch.deb "$FF_URL"
+                    # Use apt to install .deb so deps are resolved automatically
+                    sudo apt-get install -y -q /tmp/fastfetch.deb && FF_INSTALLED=true
+                fi
+            fi
             ;;
         fedora)
-            $PM_INSTALL fastfetch \
-                || (FF_URL=$(curl -s https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
-                    | grep -oP '"browser_download_url": "\K[^"]+linux-amd64\.rpm')
+            info "Trying fastfetch from dnf..."
+            if $PM_INSTALL fastfetch 2>/dev/null; then
+                FF_INSTALLED=true
+            else
+                info "Not in repos — downloading from GitHub releases..."
+                FF_URL=$(curl -s --max-time 15 \
+                    https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
+                    | grep -oP '"browser_download_url":\s*"\K[^"]+linux-amd64\.rpm' \
+                    | head -1)
+                if [ -n "$FF_URL" ]; then
                     curl -Lo /tmp/fastfetch.rpm "$FF_URL"
-                    sudo rpm -i /tmp/fastfetch.rpm)
+                    sudo rpm -i /tmp/fastfetch.rpm && FF_INSTALLED=true
+                fi
+            fi
             ;;
         arch)
-            $PM_INSTALL fastfetch
+            if $PM_INSTALL fastfetch 2>/dev/null; then FF_INSTALLED=true; fi
             ;;
     esac
+
+    if ! $FF_INSTALLED; then
+        warn "fastfetch could not be installed automatically."
+        warn "Install manually: https://github.com/fastfetch-cli/fastfetch/releases"
+        return
+    fi
 
     # Deploy config and ASCII art to the real user's home
     sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/fastfetch"
