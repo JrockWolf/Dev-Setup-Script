@@ -192,7 +192,7 @@ install_i3() {
             $PM_INSTALL \
                 i3 i3status rofi picom feh nitrogen \
                 lightdm lightdm-gtk-greeter \
-                polybar fonts-font-awesome fonts-noto-color-emoji \
+                fonts-font-awesome fonts-noto-color-emoji \
                 pavucontrol lxappearance maim xdotool brightnessctl
             sudo systemctl enable lightdm
             ;;
@@ -200,7 +200,7 @@ install_i3() {
             $PM_INSTALL \
                 i3 i3status rofi picom feh nitrogen \
                 lightdm lightdm-gtk-greeter \
-                polybar fontawesome-fonts google-noto-emoji-color-fonts \
+                fontawesome-fonts google-noto-emoji-color-fonts \
                 pavucontrol lxappearance maim xdotool brightnessctl
             sudo systemctl enable lightdm
             ;;
@@ -208,7 +208,7 @@ install_i3() {
             $PM_INSTALL \
                 i3-wm i3status rofi picom feh nitrogen \
                 lightdm lightdm-gtk-greeter \
-                polybar ttf-font-awesome noto-fonts-emoji \
+                ttf-font-awesome noto-fonts-emoji \
                 pavucontrol lxappearance maim xdotool brightnessctl
             sudo systemctl enable lightdm
             ;;
@@ -217,12 +217,6 @@ install_i3() {
     # Deploy i3 config
     mkdir -p "$HOME/.config/i3"
     cp "${SCRIPT_DIR}/configs/i3/config" "$HOME/.config/i3/config"
-
-    # Deploy polybar config
-    mkdir -p "$HOME/.config/polybar"
-    cp "${SCRIPT_DIR}/configs/polybar/config.ini"  "$HOME/.config/polybar/config.ini"
-    cp "${SCRIPT_DIR}/configs/polybar/launch.sh"   "$HOME/.config/polybar/launch.sh"
-    chmod +x "$HOME/.config/polybar/launch.sh"
 
     # Deploy picom config
     mkdir -p "$HOME/.config/picom"
@@ -516,7 +510,7 @@ install_dev_tools() {
         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
         export NVM_DIR="$HOME/.nvm"
         # shellcheck source=/dev/null
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        source "$NVM_DIR/nvm.sh" || true
         nvm install --lts
         nvm use --lts
         success "Node.js LTS installed via nvm"
@@ -712,7 +706,7 @@ print_summary() {
     echo "  System     : Flatpak/Flathub, fastfetch"
     echo ""
     warn "Re-login (or reboot) for Docker group, nvm, and cargo PATH to take effect."
-    if $INSTALL_I3; then info "i3 configs: ~/.config/i3/  ~/.config/polybar/  ~/.config/picom/"; fi
+    if $INSTALL_I3; then info "i3 configs: ~/.config/i3/  ~/.config/rofi/  ~/.config/picom/"; fi
 }
 
 # ── Main ──────────────────────────────────────────────────────────

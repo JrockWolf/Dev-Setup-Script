@@ -1,6 +1,6 @@
 # ================================================================
 #  i3 Config — Black & Purple Theme
-#  Deps: polybar, picom, rofi, feh/nitrogen, pactl, maim, xdotool
+#  Deps: i3status, picom, rofi, feh/nitrogen, pactl, maim, xdotool
 # ================================================================
 
 # ── Modifier key (Super/Windows key) ─────────────────────────────
@@ -42,9 +42,6 @@ gaps inner 8
 gaps outer 4
 
 # ── Autostart ────────────────────────────────────────────────────
-# Polybar (kills and relaunches on i3 restart)
-exec_always --no-startup-id $HOME/.config/polybar/launch.sh
-
 # Compositor (transparency, shadows, rounded corners)
 exec_always --no-startup-id picom --config $HOME/.config/picom/picom.conf -b
 
@@ -190,3 +187,24 @@ for_window [window_role="task_dialog"]    floating enable
 for_window [class="Pavucontrol"]          floating enable, resize set 700 450
 for_window [class="lxappearance"]         floating enable, resize set 600 400
 for_window [title="Picture-in-Picture"]   floating enable, sticky enable
+
+# ── i3bar (built-in status bar) ───────────────────────────────────
+bar {
+    status_command  i3status
+    position        top
+    font            pango:monospace 10
+    separator_symbol " "
+
+    colors {
+        background  #0f0018
+        statusline  #e2d9f3
+        separator   #4b0082
+
+        #                   border   background  text
+        focused_workspace   #9b30ff  #4b0082     #e2d9f3
+        active_workspace    #7b2fbe  #130020     #e2d9f3
+        inactive_workspace  #1e1e2e  #0a0a0a     #666688
+        urgent_workspace    #ff4466  #ff4466     #ffffff
+        binding_mode        #9b30ff  #4b0082     #e2d9f3
+    }
+}
