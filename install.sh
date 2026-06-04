@@ -101,10 +101,10 @@ select_de() {
         4) INSTALL_CINNAMON=true ;;
         5)
             echo ""
-            read -rp "  Install i3?       [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_I3=true
-            read -rp "  Install KDE?      [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_KDE=true
-            read -rp "  Install XFCE?     [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_XFCE=true
-            read -rp "  Install Cinnamon? [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_CINNAMON=true
+            read -rp "  Install i3?       [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_I3=true; fi
+            read -rp "  Install KDE?      [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_KDE=true; fi
+            read -rp "  Install XFCE?     [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_XFCE=true; fi
+            read -rp "  Install Cinnamon? [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_CINNAMON=true; fi
             ;;
         *)
             warn "Invalid choice; defaulting to i3."
@@ -113,10 +113,10 @@ select_de() {
     esac
 
     echo ""
-    $INSTALL_I3       && info "Will install: i3"
-    $INSTALL_KDE      && info "Will install: KDE Plasma"
-    $INSTALL_XFCE     && info "Will install: XFCE"
-    $INSTALL_CINNAMON && info "Will install: Cinnamon"
+    if $INSTALL_I3;       then info "Will install: i3"; fi
+    if $INSTALL_KDE;      then info "Will install: KDE Plasma"; fi
+    if $INSTALL_XFCE;     then info "Will install: XFCE"; fi
+    if $INSTALL_CINNAMON; then info "Will install: Cinnamon"; fi
 }
 
 # ── System update ────────────────────────────────────────────────
@@ -134,7 +134,7 @@ install_base_deps() {
         debian)
             $PM_INSTALL \
                 curl wget git gnupg2 apt-transport-https ca-certificates \
-                software-properties-common xorg xinit xdg-utils \
+                xorg xinit xdg-utils \
                 flatpak pulseaudio pulseaudio-utils
             ;;
         fedora)
@@ -449,8 +449,7 @@ install_media() {
     # OBS Studio
     case $BASE in
         debian)
-            sudo add-apt-repository ppa:obsproject/obs-studio -y
-            sudo apt update
+            # OBS is in Debian's main repos (no PPA needed — PPAs are Ubuntu-only)
             $PM_INSTALL obs-studio
             ;;
         fedora) $PM_INSTALL obs-studio ;;
@@ -713,7 +712,7 @@ print_summary() {
     echo "  System     : Flatpak/Flathub, fastfetch"
     echo ""
     warn "Re-login (or reboot) for Docker group, nvm, and cargo PATH to take effect."
-    $INSTALL_I3 && info "i3 configs: ~/.config/i3/  ~/.config/polybar/  ~/.config/picom/"
+    if $INSTALL_I3; then info "i3 configs: ~/.config/i3/  ~/.config/polybar/  ~/.config/picom/"; fi
 }
 
 # ── Main ──────────────────────────────────────────────────────────
@@ -732,10 +731,10 @@ main() {
     install_aur_helper
     setup_flatpak
 
-    $INSTALL_I3       && install_i3
-    $INSTALL_KDE      && install_kde
-    $INSTALL_XFCE     && install_xfce
-    $INSTALL_CINNAMON && install_cinnamon
+    if $INSTALL_I3;       then install_i3; fi
+    if $INSTALL_KDE;      then install_kde; fi
+    if $INSTALL_XFCE;     then install_xfce; fi
+    if $INSTALL_CINNAMON; then install_cinnamon; fi
 
     install_browsers
     install_editors
