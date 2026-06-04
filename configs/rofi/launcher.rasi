@@ -1,0 +1,113 @@
+/* ================================================================
+   Rofi Launcher — Black & Purple Theme
+   Usage: rofi -show drun -theme ~/.config/rofi/launcher.rasi
+================================================================ */
+
+* {
+    bg0:         #0a0a0aff;
+    bg1:         #130020ff;
+    bg2:         #1e003aff;
+    purple:      #9b30ffff;
+    purple-mid:  #7b2fbeee;
+    purple-dark: #4b0082ff;
+    purple-glow: #bf5fffff;
+    fg:          #e2d9f3ff;
+    fg-dim:      #9b7ec8ff;
+    urgent:      #ff4466ff;
+
+    background-color: transparent;
+    text-color:       @fg;
+    font:             "monospace 11";
+}
+
+window {
+    background-color: @bg0;
+    border:           2px solid @purple;
+    border-radius:    10px;
+    padding:          0;
+    width:            480px;
+}
+
+mainbox {
+    background-color: transparent;
+    children:         [ inputbar, listview ];
+    padding:          0;
+    spacing:          0;
+}
+
+inputbar {
+    background-color: @bg1;
+    border-radius:    8px 8px 0 0;
+    padding:          10px 14px;
+    spacing:          8px;
+    children:         [ prompt, entry ];
+}
+
+prompt {
+    background-color: transparent;
+    text-color:       @purple-glow;
+}
+
+entry {
+    background-color: transparent;
+    text-color:       @fg;
+    placeholder:      "Search apps...";
+    placeholder-color: @fg-dim;
+}
+
+listview {
+    background-color: @bg0;
+    border-radius:    0 0 8px 8px;
+    padding:          6px 4px;
+    lines:            8;
+    scrollbar:        false;
+    spacing:          2px;
+}
+
+element {
+    background-color: transparent;
+    border-radius:    6px;
+    padding:          7px 12px;
+    spacing:          8px;
+    children:         [ element-icon, element-text ];
+}
+
+element.normal.normal {
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+element.normal.urgent {
+    background-color: @urgent;
+    text-color:       #ffffff;
+}
+
+element.selected.normal {
+    background-color: @purple-dark;
+    text-color:       @fg;
+    border:           0 0 0 3px solid @purple;
+}
+
+element.alternate.normal {
+    background-color: @bg1;
+    text-color:       @fg;
+}
+
+element-icon {
+    background-color: transparent;
+    size:             24px;
+}
+
+element-text {
+    background-color: transparent;
+    text-color:       inherit;
+    vertical-align:   0.5;
+}
+
+scrollbar {
+    background-color: @bg2;
+    handle-color:     @purple-mid;
+    handle-width:     4px;
+    border-radius:    2px;
+    width:            4px;
+}
