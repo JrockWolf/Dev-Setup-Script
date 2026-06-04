@@ -204,8 +204,10 @@ aur_install() {
 # ── Flatpak setup ────────────────────────────────────────────────
 setup_flatpak() {
     header "Setting up Flatpak + Flathub"
-    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-    success "Flathub configured"
+    # --system makes Flathub available to ALL users, not just the installer (root)
+    flatpak remote-add --if-not-exists --system flathub \
+        https://dl.flathub.org/repo/flathub.flatpakrepo
+    success "Flathub configured (system-wide)"
 }
 
 # ── i3 (minimal: wm + bar + launcher + compositor + wallpaper) ───
@@ -215,7 +217,7 @@ install_i3() {
     case $BASE in
         debian)
             $PM_INSTALL \
-                i3 i3status rofi picom feh nitrogen \
+                i3 i3status rofi picom feh nitrogen alacritty \
                 lightdm lightdm-gtk-greeter \
                 fonts-font-awesome fonts-noto-color-emoji \
                 pavucontrol lxappearance maim xdotool brightnessctl
@@ -223,7 +225,7 @@ install_i3() {
             ;;
         fedora)
             $PM_INSTALL \
-                i3 i3status rofi picom feh nitrogen \
+                i3 i3status rofi picom feh nitrogen alacritty \
                 lightdm lightdm-gtk-greeter \
                 fontawesome-fonts google-noto-emoji-color-fonts \
                 pavucontrol lxappearance maim xdotool brightnessctl
@@ -231,7 +233,7 @@ install_i3() {
             ;;
         arch)
             $PM_INSTALL \
-                i3-wm i3status rofi picom feh nitrogen \
+                i3-wm i3status rofi picom feh nitrogen alacritty \
                 lightdm lightdm-gtk-greeter \
                 ttf-font-awesome noto-fonts-emoji \
                 pavucontrol lxappearance maim xdotool brightnessctl
@@ -253,7 +255,18 @@ install_i3() {
     cp "${SCRIPT_DIR}/configs/rofi/launcher.rasi" "$REAL_HOME/.config/rofi/launcher.rasi"
     chown "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/rofi/launcher.rasi"
 
-    success "i3 installed and configured for user: ${REAL_USER}"
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/alacritty"
+    cp "${SCRIPT_DIR}/configs/alacritty/alacritty.toml" "$REAL_HOME/.config/alacritty/alacritty.toml"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/alacritty"
+
+    # Set Alacritty as the default x-terminal-emulator
+    if command -v update-alternatives &>/dev/null && command -v alacritty &>/dev/null; then
+        sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator \
+            "$(command -v alacritty)" 50
+        sudo update-alternatives --set x-terminal-emulator "$(command -v alacritty)"
+    fi
+
+    success "i3 + Alacritty installed and configured for user: ${REAL_USER}"
 }
 
 # ── KDE Plasma (minimal desktop + sddm) ──────────────────────────

@@ -1,0 +1,123 @@
+# ================================================================
+#  Alacritty Config — Black & Purple Theme
+# ================================================================
+
+[general]
+import = []
+live_config_reload = true
+
+[env]
+TERM = "xterm-256color"
+
+[window]
+padding = { x = 10, y = 10 }
+decorations = "full"
+opacity = 0.92
+blur = true
+startup_mode = "Windowed"
+title = "Alacritty"
+dynamic_title = true
+
+[scrolling]
+history = 10000
+multiplier = 3
+
+[font]
+normal = { family = "monospace", style = "Regular" }
+bold   = { family = "monospace", style = "Bold" }
+italic = { family = "monospace", style = "Italic" }
+size = 12.0
+
+[colors]
+draw_bold_text_with_bright_colors = true
+
+[colors.primary]
+background = "#0a0a0a"
+foreground = "#e2d9f3"
+dim_foreground = "#9b7ec8"
+bright_foreground = "#f0eaff"
+
+[colors.cursor]
+text   = "#0a0a0a"
+cursor = "#9b30ff"
+
+[colors.vi_mode_cursor]
+text   = "#0a0a0a"
+cursor = "#bf5fff"
+
+[colors.search.matches]
+foreground = "#0a0a0a"
+background = "#9b30ff"
+
+[colors.search.focused_match]
+foreground = "#0a0a0a"
+background = "#bf5fff"
+
+[colors.hints.start]
+foreground = "#0a0a0a"
+background = "#9b30ff"
+
+[colors.hints.end]
+foreground = "#0a0a0a"
+background = "#4b0082"
+
+[colors.selection]
+text       = "#e2d9f3"
+background = "#2b0060"
+
+[colors.normal]
+black   = "#0a0a0a"
+red     = "#ff4466"
+green   = "#50fa7b"
+yellow  = "#f1fa8c"
+blue    = "#7b2fbe"
+magenta = "#9b30ff"
+cyan    = "#8be9fd"
+white   = "#e2d9f3"
+
+[colors.bright]
+black   = "#3a3050"
+red     = "#ff6680"
+green   = "#69ff94"
+yellow  = "#ffffa5"
+blue    = "#bf5fff"
+magenta = "#c084fc"
+cyan    = "#a4ffff"
+white   = "#f0eaff"
+
+[colors.dim]
+black   = "#130020"
+red     = "#cc2244"
+green   = "#3dba5e"
+yellow  = "#c2c462"
+blue    = "#4b0082"
+magenta = "#7b2fbe"
+cyan    = "#6ab5c8"
+white   = "#9b7ec8"
+
+[bell]
+animation = "EaseOutExpo"
+duration = 0
+color = "#9b30ff"
+
+[selection]
+semantic_escape_chars = ",│`|:\"' ()[]{}<>\t"
+save_to_clipboard = true
+
+[cursor]
+style = { shape = "Block", blinking = "On" }
+blink_interval = 750
+unfocused_hollow = true
+
+[terminal]
+osc52 = "CopyPaste"
+
+[keyboard]
+bindings = [
+    { key = "V", mods = "Control|Shift", action = "Paste" },
+    { key = "C", mods = "Control|Shift", action = "Copy" },
+    { key = "Plus",  mods = "Control", action = "IncreaseFontSize" },
+    { key = "Minus", mods = "Control", action = "DecreaseFontSize" },
+    { key = "Key0",  mods = "Control", action = "ResetFontSize" },
+    { key = "F11", action = "ToggleFullscreen" },
+]
