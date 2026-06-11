@@ -1,0 +1,37 @@
+# ================================================================
+#  Fluxbox init — Black & Purple Theme
+# ================================================================
+
+session.screen0.toolbar.visible:            true
+session.screen0.toolbar.height:             28
+session.screen0.toolbar.placement:          TopCenter
+session.screen0.toolbar.autoHide:           false
+session.screen0.toolbar.maxOver:            false
+session.screen0.toolbar.tools:              prevworkspace, workspacename, nextworkspace, iconbar, clock, systemtray, prevwindow, nextwindow
+session.screen0.toolbar.clock.format:       %H:%M
+session.screen0.toolbar.iconbar.usePixmap:  true
+
+session.screen0.struts:                     28 0 0 0
+session.screen0.workspaceNames:             1,2,3,4,5,6,7,8,9,10
+session.screen0.numWorkspaces:              10
+
+session.screen0.windowStyle:               ~/.fluxbox/styles/Purple
+session.screen0.defaultDeco:               NORMAL
+session.screen0.clickRaises:               true
+session.screen0.tabFocusModel:             MouseTabFocus
+session.screen0.focusModel:               MouseFocus
+session.screen0.workspacewarping:          true
+session.screen0.fullMaximization:          false
+session.screen0.focusNewWindows:           true
+session.screen0.autoRaise:                false
+session.screen0.edgeSnap:                  10
+
+session.autoRaiseDelay:         250
+session.ignoreBorder:           false
+session.menuFile:               ~/.fluxbox/menu
+session.keyFile:                ~/.fluxbox/keys
+session.styleFile:              ~/.fluxbox/styles/Purple
+session.colorsPerChannel:       4
+session.doubleClickInterval:    250
+session.tabPadding:             0
+session.opaqueMove:             true

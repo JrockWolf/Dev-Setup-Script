@@ -1,0 +1,170 @@
+# ================================================================
+#  sxhkd Config — keybindings for bspwm
+#  Modifier: Super (Mod4)
+# ================================================================
+
+# ── Applications ──────────────────────────────────────────────────
+
+# Terminal
+super + Return
+    alacritty
+
+# App launcher (rofi)
+super + d
+    rofi -show drun -theme ~/.config/rofi/launcher.rasi
+
+# Window switcher
+super + Tab
+    rofi -show window -theme ~/.config/rofi/launcher.rasi
+
+# File manager
+super + e
+    thunar
+
+# ── bspwm controls ────────────────────────────────────────────────
+
+# Close and kill
+super + shift + q
+    bspc node --close
+
+super + ctrl + shift + q
+    bspc node --kill
+
+# Reload sxhkd
+super + Escape
+    pkill -USR1 -x sxhkd
+
+# Reload bspwm
+super + shift + r
+    bspc wm --restart
+
+# Quit bspwm
+super + shift + e
+    bspc quit
+
+# ── Layout ───────────────────────────────────────────────────────
+
+# Toggle monocle layout
+super + m
+    bspc desktop --layout next
+
+# Set tiled state
+super + t
+    bspc node --state tiled
+
+# Set floating state
+super + shift + space
+    bspc node --state floating
+
+# Set fullscreen
+super + f
+    bspc node --state fullscreen
+
+# Set pseudo-tiled state
+super + p
+    bspc node --state pseudo_tiled
+
+# Toggle sticky
+super + shift + s
+    bspc node --flag sticky
+
+# ── Focus / swap ─────────────────────────────────────────────────
+
+# Focus node in direction
+super + {h,j,k,l}
+    bspc node --focus {west,south,north,east}
+
+super + {Left,Down,Up,Right}
+    bspc node --focus {west,south,north,east}
+
+# Swap node in direction
+super + shift + {h,j,k,l}
+    bspc node --swap {west,south,north,east}
+
+super + shift + {Left,Down,Up,Right}
+    bspc node --swap {west,south,north,east}
+
+# Focus parent / first-child / second-child
+super + {a,s}
+    bspc node --focus {parent,first}
+
+# Circulate leaves
+super + {comma,period}
+    bspc node --circulate {backward,forward}
+
+# ── Preselect ───────────────────────────────────────────────────
+
+super + ctrl + {h,j,k,l}
+    bspc node --presel-dir {west,south,north,east}
+
+super + ctrl + {1-9}
+    bspc node --presel-ratio 0.{1-9}
+
+super + ctrl + space
+    bspc node --presel-dir cancel
+
+# ── Resize ───────────────────────────────────────────────────────
+
+super + alt + {h,j,k,l}
+    bspc node --resize {left -20 0,bottom 0 20,top 0 -20,right 20 0}
+
+super + alt + shift + {h,j,k,l}
+    bspc node --resize {right -20 0,top 0 20,bottom 0 -20,left 20 0}
+
+# ── Move (floating windows) ───────────────────────────────────────
+
+super + ctrl + {h,j,k,l}
+    bspc node --move {-20 0,0 20,0 -20,20 0}
+
+# ── Workspaces ───────────────────────────────────────────────────
+
+# Focus desktop
+super + {1-9,0}
+    bspc desktop --focus {1-9,10}
+
+# Move node to desktop
+super + shift + {1-9,0}
+    bspc node --to-desktop {1-9,10}
+
+# Focus previous / next desktop
+super + bracket{left,right}
+    bspc desktop --focus {prev,next}
+
+# ── Media keys ───────────────────────────────────────────────────
+
+XF86AudioRaiseVolume
+    pactl set-sink-volume @DEFAULT_SINK@ +5%
+XF86AudioLowerVolume
+    pactl set-sink-volume @DEFAULT_SINK@ -5%
+XF86AudioMute
+    pactl set-sink-mute @DEFAULT_SINK@ toggle
+XF86AudioMicMute
+    pactl set-source-mute @DEFAULT_SOURCE@ toggle
+XF86AudioPlay
+    playerctl play-pause
+XF86AudioNext
+    playerctl next
+XF86AudioPrev
+    playerctl previous
+
+# ── Brightness ───────────────────────────────────────────────────
+
+XF86MonBrightnessUp
+    brightnessctl set +5%
+XF86MonBrightnessDown
+    brightnessctl set 5%-
+
+# ── Screenshots ──────────────────────────────────────────────────
+
+Print
+    maim "$HOME/Pictures/$(date +%Y%m%d_%H%M%S).png" \
+        && notify-send "Screenshot saved"
+
+super + Print
+    maim --window "$(xdotool getactivewindow)" \
+        "$HOME/Pictures/$(date +%Y%m%d_%H%M%S).png" \
+        && notify-send "Window screenshot saved"
+
+shift + Print
+    maim --select "$HOME/Pictures/$(date +%Y%m%d_%H%M%S).png" \
+        && notify-send "Region screenshot saved"

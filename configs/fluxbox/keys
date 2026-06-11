@@ -1,0 +1,88 @@
+# ================================================================
+#  Fluxbox keys — Black & Purple Theme
+#  Modifier: Mod4 = Super/Windows key
+# ================================================================
+
+# ── Applications ─────────────────────────────────────────────────
+Mod4 Return    :Exec alacritty
+Mod4 d         :Exec rofi -show drun -theme ~/.config/rofi/launcher.rasi
+Mod4 Tab       :Exec rofi -show window -theme ~/.config/rofi/launcher.rasi
+
+# ── Window management ─────────────────────────────────────────────
+Mod4 Shift q   :Close
+Mod4 f         :Fullscreen
+Mod4 Shift space :ToggleDecor
+
+# Focus
+Mod4 h         :FocusLeft
+Mod4 j         :FocusDown
+Mod4 k         :FocusUp
+Mod4 l         :FocusRight
+Mod4 Left      :FocusLeft
+Mod4 Down      :FocusDown
+Mod4 Up        :FocusUp
+Mod4 Right     :FocusRight
+
+# Move (floating)
+Mod4 Shift h   :MoveLeft 50
+Mod4 Shift j   :MoveDown 50
+Mod4 Shift k   :MoveUp 50
+Mod4 Shift l   :MoveRight 50
+Mod4 Shift Left   :MoveLeft 50
+Mod4 Shift Down   :MoveDown 50
+Mod4 Shift Up     :MoveUp 50
+Mod4 Shift Right  :MoveRight 50
+
+# Resize
+Mod4 Control h :ResizeHorizontal -10
+Mod4 Control j :ResizeVertical 10
+Mod4 Control k :ResizeVertical -10
+Mod4 Control l :ResizeHorizontal 10
+
+# ── Workspaces ───────────────────────────────────────────────────
+Mod4 1   :Workspace 1
+Mod4 2   :Workspace 2
+Mod4 3   :Workspace 3
+Mod4 4   :Workspace 4
+Mod4 5   :Workspace 5
+Mod4 6   :Workspace 6
+Mod4 7   :Workspace 7
+Mod4 8   :Workspace 8
+Mod4 9   :Workspace 9
+Mod4 0   :Workspace 10
+
+Mod4 Shift 1   :SendToWorkspace 1
+Mod4 Shift 2   :SendToWorkspace 2
+Mod4 Shift 3   :SendToWorkspace 3
+Mod4 Shift 4   :SendToWorkspace 4
+Mod4 Shift 5   :SendToWorkspace 5
+Mod4 Shift 6   :SendToWorkspace 6
+Mod4 Shift 7   :SendToWorkspace 7
+Mod4 Shift 8   :SendToWorkspace 8
+Mod4 Shift 9   :SendToWorkspace 9
+Mod4 Shift 0   :SendToWorkspace 10
+
+Mod4 bracketleft  :PrevWorkspace
+Mod4 bracketright :NextWorkspace
+
+# ── Fluxbox controls ─────────────────────────────────────────────
+Mod4 Shift r   :Restart
+Mod4 Shift e   :Exit
+
+# ── Media keys ───────────────────────────────────────────────────
+None XF86AudioRaiseVolume  :Exec pactl set-sink-volume @DEFAULT_SINK@ +5%
+None XF86AudioLowerVolume  :Exec pactl set-sink-volume @DEFAULT_SINK@ -5%
+None XF86AudioMute         :Exec pactl set-sink-mute @DEFAULT_SINK@ toggle
+None XF86AudioMicMute      :Exec pactl set-source-mute @DEFAULT_SOURCE@ toggle
+None XF86AudioPlay         :Exec playerctl play-pause
+None XF86AudioNext         :Exec playerctl next
+None XF86AudioPrev         :Exec playerctl previous
+
+# ── Brightness ───────────────────────────────────────────────────
+None XF86MonBrightnessUp   :Exec brightnessctl set +5%
+None XF86MonBrightnessDown :Exec brightnessctl set 5%-
+
+# ── Screenshots ──────────────────────────────────────────────────
+None Print          :Exec maim "$HOME/Pictures/$(date +%Y%m%d_%H%M%S).png" && notify-send "Screenshot saved"
+Mod4 Print          :Exec maim --window "$(xdotool getactivewindow)" "$HOME/Pictures/$(date +%Y%m%d_%H%M%S).png"
+Shift None Print    :Exec maim --select "$HOME/Pictures/$(date +%Y%m%d_%H%M%S).png"

@@ -1,0 +1,185 @@
+/* ================================================================
+   Waybar Style — Black & Purple Theme
+   Palette mirrors the i3 / polybar theme exactly.
+   ================================================================ */
+
+/* ── Global reset ────────────────────────────────────────────── */
+* {
+    font-family: "monospace", "Font Awesome 6 Free", "Noto Color Emoji";
+    font-size: 12px;
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    margin: 0;
+}
+
+/* ── Bar window ──────────────────────────────────────────────── */
+window#waybar {
+    background-color: #0f0018;
+    color: #e2d9f3;
+    border-bottom: 2px solid #4b0082;
+    transition: background-color 0.2s ease;
+}
+
+window#waybar.hidden {
+    opacity: 0.2;
+}
+
+/* ── Generic module wrapper ──────────────────────────────────── */
+.modules-left,
+.modules-center,
+.modules-right {
+    padding: 0 4px;
+}
+
+#workspaces,
+#mode,
+#window,
+#clock,
+#cpu,
+#memory,
+#pulseaudio,
+#network,
+#battery,
+#tray {
+    padding: 0 8px;
+    color: #e2d9f3;
+}
+
+/* ── Workspaces ──────────────────────────────────────────────── */
+#workspaces button {
+    padding: 0 6px;
+    background-color: transparent;
+    color: #4a4060;
+    border-bottom: 2px solid transparent;
+    transition: all 0.1s ease;
+}
+
+#workspaces button:hover {
+    background-color: #1e1e2e;
+    color: #c084fc;
+    border-bottom-color: #7b2fbe;
+}
+
+#workspaces button.focused {
+    background-color: #130020;
+    color: #e2d9f3;
+    border-bottom: 2px solid #9b30ff;
+}
+
+#workspaces button.urgent {
+    background-color: #ff4466;
+    color: #ffffff;
+}
+
+/* ── Mode indicator ──────────────────────────────────────────── */
+#mode {
+    background-color: #4b0082;
+    color: #e2d9f3;
+    padding: 0 10px;
+    border-bottom: 2px solid #9b30ff;
+    font-style: italic;
+}
+
+/* ── Window title ────────────────────────────────────────────── */
+#window {
+    color: #9b7ec8;
+}
+
+/* ── Clock ───────────────────────────────────────────────────── */
+#clock {
+    color: #bf5fff;
+    font-weight: bold;
+}
+
+/* ── CPU ─────────────────────────────────────────────────────── */
+#cpu {
+    color: #c084fc;
+}
+
+#cpu.warning {
+    color: #ffaa00;
+}
+
+#cpu.critical {
+    color: #ff4466;
+}
+
+/* ── Memory ──────────────────────────────────────────────────── */
+#memory {
+    color: #c084fc;
+}
+
+#memory.warning {
+    color: #ffaa00;
+}
+
+#memory.critical {
+    color: #ff4466;
+}
+
+/* ── Volume ──────────────────────────────────────────────────── */
+#pulseaudio {
+    color: #bf5fff;
+}
+
+#pulseaudio.muted {
+    color: #4a4060;
+}
+
+/* ── Network ─────────────────────────────────────────────────── */
+#network {
+    color: #bf5fff;
+}
+
+#network.disconnected {
+    color: #4a4060;
+}
+
+/* ── Battery ─────────────────────────────────────────────────── */
+#battery {
+    color: #50fa7b;
+}
+
+#battery.warning {
+    color: #ffaa00;
+}
+
+#battery.critical {
+    color: #ff4466;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+@keyframes blink {
+    to {
+        color: #ffffff;
+        background-color: #ff4466;
+    }
+}
+
+/* ── Tray ────────────────────────────────────────────────────── */
+#tray {
+    padding: 0 6px;
+}
+
+#tray > .passive {
+    -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+    -gtk-icon-effect: highlight;
+    background-color: #ff4466;
+}
+
+/* ── Tooltip ─────────────────────────────────────────────────── */
+tooltip {
+    background-color: #0f0018;
+    color: #e2d9f3;
+    border: 1px solid #4b0082;
+    border-radius: 4px;
+}

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # ================================================================
 #  Linux Machine Setup Script
-#  Supports: Debian-based | Fedora-based | Arch-based
+#  Auto-detects: Debian-based | Fedora-based | Arch-based
 #  Desktop Envs: i3, KDE Plasma, XFCE, Cinnamon (pick one or more)
+#  Optional:     Bluetooth, WiFi, mouse/input, GPU drivers, PipeWire
 # ================================================================
 
 set -euo pipefail
@@ -38,6 +39,19 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 export APT_LISTBUGS_FRONTEND=none
+
+# ── Unix/Linux guard ─────────────────────────────────────────────
+check_unix() {
+    local kernel
+    kernel="$(uname -s 2>/dev/null)" || error "Cannot determine OS — is 'uname' installed?"
+    case "$kernel" in
+        Linux)  ;;
+        Darwin) error "macOS detected — this script targets Linux only." ;;
+        *)      error "Unsupported OS: ${kernel}. Only Linux is supported." ;;
+    esac
+    [ "$(id -u)" -eq 0 ] || error "Run this script with sudo (e.g. sudo bash install.sh)."
+    success "Running on Linux — all pre-flight checks passed"
+}
 
 # ── Detect or select distro base ─────────────────────────────────
 detect_distro() {
@@ -97,24 +111,28 @@ select_de() {
     INSTALL_KDE=false
     INSTALL_XFCE=false
     INSTALL_CINNAMON=false
+    INSTALL_SWAY=false
 
-    echo "Which desktop environment(s) would you like to install?"
-    echo "  1) i3 (tiling window manager)"
-    echo "  2) KDE Plasma"
-    echo "  3) XFCE"
-    echo "  4) Cinnamon"
-    echo "  5) Multiple (choose below)"
+    echo "Which desktop environment / window manager would you like to install?"
+    echo "  1) i3        (X11 tiling WM — i3bar + i3status, purple themed)"
+    echo "  2) Sway      (Wayland tiling WM — waybar, purple themed)"
+    echo "  3) KDE Plasma"
+    echo "  4) XFCE"
+    echo "  5) Cinnamon"
+    echo "  6) Multiple  (choose below)"
     echo ""
-    read -rp "Enter choice [1-5]: " de_choice
+    read -rp "Enter choice [1-6]: " de_choice
 
     case $de_choice in
         1) INSTALL_I3=true ;;
-        2) INSTALL_KDE=true ;;
-        3) INSTALL_XFCE=true ;;
-        4) INSTALL_CINNAMON=true ;;
-        5)
+        2) INSTALL_SWAY=true ;;
+        3) INSTALL_KDE=true ;;
+        4) INSTALL_XFCE=true ;;
+        5) INSTALL_CINNAMON=true ;;
+        6)
             echo ""
             read -rp "  Install i3?       [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_I3=true; fi
+            read -rp "  Install Sway?     [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_SWAY=true; fi
             read -rp "  Install KDE?      [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_KDE=true; fi
             read -rp "  Install XFCE?     [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_XFCE=true; fi
             read -rp "  Install Cinnamon? [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_CINNAMON=true; fi
@@ -126,10 +144,196 @@ select_de() {
     esac
 
     echo ""
-    if $INSTALL_I3;       then info "Will install: i3"; fi
+    if $INSTALL_I3;       then info "Will install: i3 (i3bar + i3status)"; fi
+    if $INSTALL_SWAY;     then info "Will install: Sway (waybar)"; fi
     if $INSTALL_KDE;      then info "Will install: KDE Plasma"; fi
     if $INSTALL_XFCE;     then info "Will install: XFCE"; fi
     if $INSTALL_CINNAMON; then info "Will install: Cinnamon"; fi
+}
+
+# ── Optional driver / service selection ─────────────────────────
+select_optional_drivers() {
+    header "Optional Hardware Drivers & Services"
+
+    INSTALL_BLUETOOTH=false
+    INSTALL_WIFI=false
+    INSTALL_MOUSE_DRIVERS=false
+    INSTALL_GPU_DRIVERS=false
+    GPU_TYPE=""
+    INSTALL_PIPEWIRE=false
+
+    echo "After your DE/WM installs, the following hardware drivers can be set up."
+    echo "Press Enter to skip any option (defaults to No)."
+    echo ""
+
+    read -rp "  Bluetooth support? (bluez + blueman)          [y/N] " r
+    [[ "$r" =~ ^[Yy] ]] && INSTALL_BLUETOOTH=true
+
+    read -rp "  WiFi / NetworkManager?                        [y/N] " r
+    [[ "$r" =~ ^[Yy] ]] && INSTALL_WIFI=true
+
+    read -rp "  Mouse / pointer input drivers? (libinput)     [y/N] " r
+    [[ "$r" =~ ^[Yy] ]] && INSTALL_MOUSE_DRIVERS=true
+
+    read -rp "  GPU drivers? (will ask for vendor next)       [y/N] " r
+    if [[ "$r" =~ ^[Yy] ]]; then
+        INSTALL_GPU_DRIVERS=true
+        local detected=""
+        detected=$(lspci 2>/dev/null | grep -iE "vga|3d|display" | head -1 || true)
+        [ -n "$detected" ] && info "Auto-detected GPU: ${detected}"
+        echo ""
+        echo "  Select GPU driver type:"
+        echo "    1) NVIDIA (proprietary)"
+        echo "    2) AMD   (open-source, mesa)"
+        echo "    3) Intel (open-source, mesa)"
+        echo "    4) Skip  (no GPU driver changes)"
+        read -rp "  Enter choice [1-4]: " gpu_choice
+        case $gpu_choice in
+            1) GPU_TYPE="nvidia" ;;
+            2) GPU_TYPE="amd" ;;
+            3) GPU_TYPE="intel" ;;
+            *) INSTALL_GPU_DRIVERS=false; warn "Skipping GPU drivers." ;;
+        esac
+    fi
+
+    read -rp "  Replace PulseAudio with PipeWire?             [y/N] " r
+    [[ "$r" =~ ^[Yy] ]] && INSTALL_PIPEWIRE=true
+
+    echo ""
+    $INSTALL_BLUETOOTH     && info "Will install: Bluetooth"
+    $INSTALL_WIFI          && info "Will install: WiFi / NetworkManager"
+    $INSTALL_MOUSE_DRIVERS && info "Will install: Mouse / input drivers (libinput)"
+    $INSTALL_GPU_DRIVERS   && info "Will install: ${GPU_TYPE^^} GPU drivers"
+    $INSTALL_PIPEWIRE      && info "Will install: PipeWire (replaces PulseAudio)"
+}
+
+# ── Bluetooth ────────────────────────────────────────────────────
+install_bluetooth() {
+    header "Installing Bluetooth (bluez + blueman)"
+    case $BASE in
+        debian) $PM_INSTALL bluez bluez-tools blueman ;;
+        fedora) $PM_INSTALL bluez bluez-tools blueman ;;
+        arch)   $PM_INSTALL bluez bluez-utils blueman ;;
+    esac
+    sudo systemctl enable --now bluetooth
+    success "Bluetooth installed and enabled"
+}
+
+# ── WiFi / NetworkManager ────────────────────────────────────────
+install_wifi() {
+    header "Installing WiFi / NetworkManager"
+    case $BASE in
+        debian)
+            $PM_INSTALL network-manager network-manager-gnome \
+                wireless-tools wpasupplicant
+            ;;
+        fedora)
+            $PM_INSTALL NetworkManager NetworkManager-wifi \
+                wireless-tools wpa_supplicant NetworkManager-applet
+            ;;
+        arch)
+            $PM_INSTALL networkmanager network-manager-applet \
+                wireless_tools wpa_supplicant
+            ;;
+    esac
+    sudo systemctl enable --now NetworkManager
+    success "NetworkManager installed and enabled"
+    info "Use 'nmtui' (terminal) or nm-applet (system tray) to manage connections."
+}
+
+# ── Mouse / pointer input drivers ───────────────────────────────
+install_mouse_drivers() {
+    header "Installing mouse / pointer input drivers (libinput)"
+    case $BASE in
+        debian) $PM_INSTALL xserver-xorg-input-libinput xinput ;;
+        fedora) $PM_INSTALL xorg-x11-drv-libinput xinput ;;
+        arch)   $PM_INSTALL xf86-input-libinput libinput xinput ;;
+    esac
+    success "libinput / mouse drivers installed"
+}
+
+# ── GPU drivers ──────────────────────────────────────────────────
+install_gpu_drivers() {
+    header "Installing ${GPU_TYPE^^} GPU drivers"
+    case "$GPU_TYPE" in
+        nvidia)
+            case $BASE in
+                debian)
+                    $PM_INSTALL nvidia-driver nvidia-settings
+                    ;;
+                fedora)
+                    $PM_INSTALL akmod-nvidia xorg-x11-drv-nvidia nvidia-settings
+                    ;;
+                arch)
+                    $PM_INSTALL nvidia nvidia-utils nvidia-settings
+                    ;;
+            esac
+            success "NVIDIA drivers installed — reboot required to load the kernel module"
+            warn "Wayland users: add 'nvidia_drm.modeset=1' as a kernel parameter."
+            ;;
+        amd)
+            case $BASE in
+                debian)
+                    $PM_INSTALL xserver-xorg-video-amdgpu \
+                        firmware-amd-graphics mesa-vulkan-drivers
+                    ;;
+                fedora)
+                    $PM_INSTALL xorg-x11-drv-amdgpu \
+                        mesa-vulkan-drivers-amdgpu mesa-dri-drivers
+                    ;;
+                arch)
+                    $PM_INSTALL xf86-video-amdgpu mesa vulkan-radeon \
+                        libva-mesa-driver
+                    ;;
+            esac
+            success "AMD GPU drivers installed"
+            ;;
+        intel)
+            case $BASE in
+                debian)
+                    $PM_INSTALL xserver-xorg-video-intel \
+                        intel-media-va-driver mesa-vulkan-drivers
+                    ;;
+                fedora)
+                    $PM_INSTALL xorg-x11-drv-intel \
+                        intel-media-driver mesa-vulkan-drivers
+                    ;;
+                arch)
+                    $PM_INSTALL xf86-video-intel mesa vulkan-intel \
+                        intel-media-driver
+                    ;;
+            esac
+            success "Intel GPU drivers installed"
+            ;;
+    esac
+}
+
+# ── PipeWire (replaces PulseAudio) ───────────────────────────────
+install_pipewire() {
+    header "Installing PipeWire (replacing PulseAudio)"
+    case $BASE in
+        debian)
+            $PM_INSTALL pipewire pipewire-audio-client-libraries \
+                pipewire-pulse wireplumber gstreamer1.0-pipewire \
+                libspa-0.2-bluetooth
+            sudo -u "$REAL_USER" systemctl --user --now disable \
+                pulseaudio.service pulseaudio.socket 2>/dev/null || true
+            sudo -u "$REAL_USER" systemctl --user --now enable \
+                pipewire pipewire-pulse wireplumber 2>/dev/null || true
+            ;;
+        fedora)
+            $PM_INSTALL pipewire pipewire-pulseaudio wireplumber \
+                pipewire-alsa pipewire-jack-audio-connection-kit
+            ;;
+        arch)
+            $PM_INSTALL pipewire pipewire-pulse wireplumber \
+                pipewire-alsa pipewire-jack
+            sudo -u "$REAL_USER" systemctl --user --now enable \
+                pipewire pipewire-pulse wireplumber 2>/dev/null || true
+            ;;
+    esac
+    success "PipeWire installed"
+    warn "Log out and back in (or reboot) for PipeWire to fully replace PulseAudio."
 }
 
 # ── System update ────────────────────────────────────────────────
@@ -267,6 +471,438 @@ install_i3() {
     fi
 
     success "i3 + Alacritty installed and configured for user: ${REAL_USER}"
+    info "i3bar uses i3status — theme colors defined in ~/.config/i3/config"
+}
+
+# ── Sway (Wayland tiling WM + waybar) ─────────────────────────────
+install_sway() {
+    header "Installing Sway (Wayland)"
+
+    case $BASE in
+        debian)
+            $PM_INSTALL \
+                sway waybar rofi alacritty \
+                swaybg swaylock swayidle \
+                grim slurp mako-notifier \
+                lightdm lightdm-gtk-greeter \
+                fonts-font-awesome fonts-noto-color-emoji \
+                pavucontrol lxappearance brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+        fedora)
+            $PM_INSTALL \
+                sway waybar rofi alacritty \
+                swaybg swaylock swayidle \
+                grim slurp mako \
+                lightdm lightdm-gtk-greeter \
+                fontawesome-fonts google-noto-emoji-color-fonts \
+                pavucontrol lxappearance brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+        arch)
+            $PM_INSTALL \
+                sway waybar rofi alacritty \
+                swaybg swaylock swayidle \
+                grim slurp mako \
+                lightdm lightdm-gtk-greeter \
+                ttf-font-awesome noto-fonts-emoji \
+                pavucontrol lxappearance brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+    esac
+
+    info "Deploying Sway + Waybar configs to ${REAL_HOME}..."
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/sway"
+    cp "${SCRIPT_DIR}/configs/sway/config" "$REAL_HOME/.config/sway/config"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/sway"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/waybar"
+    cp "${SCRIPT_DIR}/configs/waybar/config.jsonc" "$REAL_HOME/.config/waybar/config.jsonc"
+    cp "${SCRIPT_DIR}/configs/waybar/style.css"    "$REAL_HOME/.config/waybar/style.css"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/waybar"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/rofi"
+    cp "${SCRIPT_DIR}/configs/rofi/launcher.rasi" "$REAL_HOME/.config/rofi/launcher.rasi"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/rofi"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/alacritty"
+    cp "${SCRIPT_DIR}/configs/alacritty/alacritty.toml" "$REAL_HOME/.config/alacritty/alacritty.toml"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/alacritty"
+
+    success "Sway + Waybar installed and configured for user: ${REAL_USER}"
+    warn "Waybar uses Font Awesome icons — ensure a patched or FA font is active."
+    info "Drop a wallpaper at ~/.config/sway/wallpaper.jpg to enable it."
+}
+
+# ── bspwm (X11 tiling WM + polybar) ─────────────────────────────
+install_bspwm() {
+    header "Installing bspwm"
+
+    case $BASE in
+        debian)
+            $PM_INSTALL \
+                bspwm sxhkd picom rofi feh nitrogen alacritty \
+                polybar dunst \
+                lightdm lightdm-gtk-greeter \
+                fonts-font-awesome fonts-noto-color-emoji \
+                pavucontrol lxappearance maim xdotool brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+        fedora)
+            $PM_INSTALL \
+                bspwm sxhkd picom rofi feh nitrogen alacritty \
+                polybar dunst \
+                lightdm lightdm-gtk-greeter \
+                fontawesome-fonts google-noto-emoji-color-fonts \
+                pavucontrol lxappearance maim xdotool brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+        arch)
+            $PM_INSTALL \
+                bspwm sxhkd picom rofi feh nitrogen alacritty \
+                polybar dunst \
+                lightdm lightdm-gtk-greeter \
+                ttf-font-awesome noto-fonts-emoji \
+                pavucontrol lxappearance maim xdotool brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+    esac
+
+    info "Deploying bspwm configs to ${REAL_HOME}..."
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/bspwm"
+    cp "${SCRIPT_DIR}/configs/bspwm/bspwmrc" "$REAL_HOME/.config/bspwm/bspwmrc"
+    chmod +x "$REAL_HOME/.config/bspwm/bspwmrc"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/bspwm"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/sxhkd"
+    cp "${SCRIPT_DIR}/configs/sxhkd/sxhkdrc" "$REAL_HOME/.config/sxhkd/sxhkdrc"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/sxhkd"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/picom"
+    cp "${SCRIPT_DIR}/configs/picom.conf" "$REAL_HOME/.config/picom/picom.conf"
+    chown "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/picom/picom.conf"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/polybar"
+    cp "${SCRIPT_DIR}/configs/polybar/config.ini" "$REAL_HOME/.config/polybar/config.ini"
+    cp "${SCRIPT_DIR}/configs/polybar/launch.sh"  "$REAL_HOME/.config/polybar/launch.sh"
+    chmod +x "$REAL_HOME/.config/polybar/launch.sh"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/polybar"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/rofi"
+    cp "${SCRIPT_DIR}/configs/rofi/launcher.rasi" "$REAL_HOME/.config/rofi/launcher.rasi"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/rofi"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/alacritty"
+    cp "${SCRIPT_DIR}/configs/alacritty/alacritty.toml" "$REAL_HOME/.config/alacritty/alacritty.toml"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/alacritty"
+
+    success "bspwm + polybar installed and configured for user: ${REAL_USER}"
+    info "Drop a wallpaper at ~/.config/bspwm/wallpaper.jpg to set the background."
+}
+
+# ── AwesomeWM (X11 dynamic WM + wibox) ─────────────────────────
+install_awesome() {
+    header "Installing AwesomeWM"
+
+    case $BASE in
+        debian)
+            $PM_INSTALL \
+                awesome picom rofi feh nitrogen alacritty \
+                lightdm lightdm-gtk-greeter \
+                fonts-font-awesome fonts-noto-color-emoji \
+                pavucontrol lxappearance maim xdotool brightnessctl lua5.4
+            sudo systemctl enable lightdm
+            ;;
+        fedora)
+            $PM_INSTALL \
+                awesome picom rofi feh nitrogen alacritty \
+                lightdm lightdm-gtk-greeter \
+                fontawesome-fonts google-noto-emoji-color-fonts \
+                pavucontrol lxappearance maim xdotool brightnessctl lua
+            sudo systemctl enable lightdm
+            ;;
+        arch)
+            $PM_INSTALL \
+                awesome picom rofi feh nitrogen alacritty \
+                lightdm lightdm-gtk-greeter \
+                ttf-font-awesome noto-fonts-emoji \
+                pavucontrol lxappearance maim xdotool brightnessctl lua
+            sudo systemctl enable lightdm
+            ;;
+    esac
+
+    info "Deploying AwesomeWM configs to ${REAL_HOME}..."
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/awesome"
+    cp "${SCRIPT_DIR}/configs/awesome/rc.lua" "$REAL_HOME/.config/awesome/rc.lua"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/awesome"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/picom"
+    cp "${SCRIPT_DIR}/configs/picom.conf" "$REAL_HOME/.config/picom/picom.conf"
+    chown "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/picom/picom.conf"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/rofi"
+    cp "${SCRIPT_DIR}/configs/rofi/launcher.rasi" "$REAL_HOME/.config/rofi/launcher.rasi"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/rofi"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/alacritty"
+    cp "${SCRIPT_DIR}/configs/alacritty/alacritty.toml" "$REAL_HOME/.config/alacritty/alacritty.toml"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/alacritty"
+
+    success "AwesomeWM installed and configured for user: ${REAL_USER}"
+    info "Drop a wallpaper at ~/.config/awesome/wallpaper.jpg to set the background."
+}
+
+# ── Qtile (X11 tiling WM + built-in bar) ───────────────────────
+install_qtile() {
+    header "Installing Qtile"
+
+    case $BASE in
+        debian)
+            # Try package manager first; fall back to pip
+            if $PM_INSTALL qtile 2>/dev/null; then
+                info "Qtile installed from apt."
+            else
+                $PM_INSTALL python3-pip python3-xcb python3-cairocffi \
+                    libxcb-render0-dev libffi-dev libpangocairo-1.0-0 \
+                    python3-dbus python3-psutil python3-gobject
+                sudo pip3 install qtile
+            fi
+            $PM_INSTALL \
+                picom rofi feh nitrogen alacritty \
+                lightdm lightdm-gtk-greeter \
+                fonts-font-awesome fonts-noto-color-emoji \
+                pavucontrol lxappearance maim xdotool brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+        fedora)
+            if $PM_INSTALL qtile 2>/dev/null; then
+                info "Qtile installed from dnf."
+            else
+                $PM_INSTALL python3-pip python3-xcb-proto python3-cairocffi \
+                    libffi-devel python3-dbus python3-psutil python3-gobject3
+                sudo pip3 install qtile
+            fi
+            $PM_INSTALL \
+                picom rofi feh nitrogen alacritty \
+                lightdm lightdm-gtk-greeter \
+                fontawesome-fonts google-noto-emoji-color-fonts \
+                pavucontrol lxappearance maim xdotool brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+        arch)
+            $PM_INSTALL \
+                qtile picom rofi feh nitrogen alacritty \
+                lightdm lightdm-gtk-greeter \
+                ttf-font-awesome noto-fonts-emoji \
+                pavucontrol lxappearance maim xdotool brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+    esac
+
+    info "Deploying Qtile configs to ${REAL_HOME}..."
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/qtile"
+    cp "${SCRIPT_DIR}/configs/qtile/config.py" "$REAL_HOME/.config/qtile/config.py"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/qtile"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/picom"
+    cp "${SCRIPT_DIR}/configs/picom.conf" "$REAL_HOME/.config/picom/picom.conf"
+    chown "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/picom/picom.conf"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/rofi"
+    cp "${SCRIPT_DIR}/configs/rofi/launcher.rasi" "$REAL_HOME/.config/rofi/launcher.rasi"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/rofi"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/alacritty"
+    cp "${SCRIPT_DIR}/configs/alacritty/alacritty.toml" "$REAL_HOME/.config/alacritty/alacritty.toml"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/alacritty"
+
+    success "Qtile installed and configured for user: ${REAL_USER}"
+    info "Drop a wallpaper at ~/.config/qtile/wallpaper.jpg to set the background."
+}
+
+# ── Hyprland compat check ───────────────────────────────────────
+check_hyprland_compat() {
+    case $BASE in
+        arch)   return 0 ;;
+        fedora) return 0 ;;
+        debian)
+            warn "Hyprland is NOT officially supported on Debian-based distros."
+            warn "It may be unstable or require building from source."
+            read -rp "  Proceed with Hyprland on Debian anyway? [y/N] " r
+            [[ "$r" =~ ^[Yy] ]] && return 0 || return 1
+            ;;
+    esac
+}
+
+# ── Hyprland (Wayland compositor + waybar) ───────────────────────
+install_hyprland() {
+    header "Installing Hyprland (Wayland)"
+
+    if ! check_hyprland_compat; then
+        warn "Skipping Hyprland — not supported on this distro."
+        return
+    fi
+
+    case $BASE in
+        arch)
+            $PM_INSTALL \
+                hyprland waybar rofi alacritty \
+                hyprpaper hypridle hyprlock \
+                grim slurp mako jq \
+                ttf-font-awesome noto-fonts-emoji \
+                pavucontrol lxappearance brightnessctl
+            ;;
+        fedora)
+            sudo dnf copr enable solopasha/hyprland -y
+            $PM_INSTALL \
+                hyprland waybar rofi alacritty \
+                hyprpaper hypridle hyprlock \
+                grim slurp mako jq \
+                fontawesome-fonts google-noto-emoji-color-fonts \
+                pavucontrol lxappearance brightnessctl
+            ;;
+        debian)
+            warn "Installing minimal Wayland toolchain for Hyprland on Debian."
+            $PM_INSTALL \
+                waybar rofi alacritty grim slurp mako-notifier jq \
+                fonts-font-awesome fonts-noto-color-emoji \
+                pavucontrol lxappearance brightnessctl
+            warn "Hyprland itself must be built from source on Debian."
+            warn "See: https://wiki.hyprland.org/Getting-Started/Installation/"
+            ;;
+    esac
+
+    info "Deploying Hyprland + Waybar configs to ${REAL_HOME}..."
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/hypr"
+    cp "${SCRIPT_DIR}/configs/hyprland/hyprland.conf" "$REAL_HOME/.config/hypr/hyprland.conf"
+    cp "${SCRIPT_DIR}/configs/hyprland/hyprpaper.conf" "$REAL_HOME/.config/hypr/hyprpaper.conf"
+    cp "${SCRIPT_DIR}/configs/hyprland/hypridle.conf"  "$REAL_HOME/.config/hypr/hypridle.conf"
+    cp "${SCRIPT_DIR}/configs/hyprland/hyprlock.conf"  "$REAL_HOME/.config/hypr/hyprlock.conf"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/hypr"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/waybar"
+    cp "${SCRIPT_DIR}/configs/waybar/config.jsonc" "$REAL_HOME/.config/waybar/config.jsonc"
+    cp "${SCRIPT_DIR}/configs/waybar/style.css"    "$REAL_HOME/.config/waybar/style.css"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/waybar"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/rofi"
+    cp "${SCRIPT_DIR}/configs/rofi/launcher.rasi" "$REAL_HOME/.config/rofi/launcher.rasi"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/rofi"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/alacritty"
+    cp "${SCRIPT_DIR}/configs/alacritty/alacritty.toml" "$REAL_HOME/.config/alacritty/alacritty.toml"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/alacritty"
+
+    success "Hyprland + Waybar installed and configured for user: ${REAL_USER}"
+    info "Drop a wallpaper at ~/.config/hypr/wallpaper.jpg — hyprpaper will use it."
+    warn "Hyprland is launched from the TTY or via a Wayland-capable display manager."
+}
+
+# ── Fluxbox (X11 stacking WM + built-in toolbar) ─────────────────
+install_fluxbox() {
+    header "Installing Fluxbox"
+
+    case $BASE in
+        debian)
+            $PM_INSTALL \
+                fluxbox rofi feh nitrogen alacritty \
+                lightdm lightdm-gtk-greeter \
+                fonts-font-awesome fonts-noto-color-emoji \
+                pavucontrol lxappearance maim xdotool brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+        fedora)
+            $PM_INSTALL \
+                fluxbox rofi feh nitrogen alacritty \
+                lightdm lightdm-gtk-greeter \
+                fontawesome-fonts google-noto-emoji-color-fonts \
+                pavucontrol lxappearance maim xdotool brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+        arch)
+            $PM_INSTALL \
+                fluxbox rofi feh nitrogen alacritty \
+                lightdm lightdm-gtk-greeter \
+                ttf-font-awesome noto-fonts-emoji \
+                pavucontrol lxappearance maim xdotool brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+    esac
+
+    info "Deploying Fluxbox configs to ${REAL_HOME}..."
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.fluxbox/styles"
+    cp "${SCRIPT_DIR}/configs/fluxbox/init"          "$REAL_HOME/.fluxbox/init"
+    cp "${SCRIPT_DIR}/configs/fluxbox/keys"          "$REAL_HOME/.fluxbox/keys"
+    cp "${SCRIPT_DIR}/configs/fluxbox/menu"          "$REAL_HOME/.fluxbox/menu"
+    cp "${SCRIPT_DIR}/configs/fluxbox/styles/Purple" "$REAL_HOME/.fluxbox/styles/Purple"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.fluxbox"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/rofi"
+    cp "${SCRIPT_DIR}/configs/rofi/launcher.rasi" "$REAL_HOME/.config/rofi/launcher.rasi"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/rofi"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/alacritty"
+    cp "${SCRIPT_DIR}/configs/alacritty/alacritty.toml" "$REAL_HOME/.config/alacritty/alacritty.toml"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/alacritty"
+
+    success "Fluxbox installed and configured for user: ${REAL_USER}"
+    warn "Apply the Purple style via right-click → Fluxbox menu → Styles if not loaded."
+}
+
+# ── dwm (X11 minimal WM compiled from source) ───────────────────
+install_dwm() {
+    header "Installing dwm (compiled from source)"
+
+    # Install build deps
+    case $BASE in
+        debian)
+            $PM_INSTALL build-essential libx11-dev libxft-dev libxinerama-dev \
+                dmenu rofi alacritty \
+                lightdm lightdm-gtk-greeter \
+                fonts-font-awesome pavucontrol maim xdotool brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+        fedora)
+            $PM_INSTALL gcc make libX11-devel libXft-devel libXinerama-devel \
+                dmenu rofi alacritty \
+                lightdm lightdm-gtk-greeter \
+                fontawesome-fonts pavucontrol maim xdotool brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+        arch)
+            $PM_INSTALL base-devel libx11 libxft libxinerama \
+                dmenu rofi alacritty \
+                lightdm lightdm-gtk-greeter \
+                ttf-font-awesome pavucontrol maim xdotool brightnessctl
+            sudo systemctl enable lightdm
+            ;;
+    esac
+
+    info "Building dwm from source..."
+    local build_dir
+    build_dir="$(mktemp -d /tmp/dwm-build.XXXXXX)"
+    git clone --depth=1 https://git.suckless.org/dwm "$build_dir"
+    cp "${SCRIPT_DIR}/configs/dwm/config.h" "$build_dir/config.h"
+    make -C "$build_dir"
+    make -C "$build_dir" install
+    rm -rf "$build_dir"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/rofi"
+    cp "${SCRIPT_DIR}/configs/rofi/launcher.rasi" "$REAL_HOME/.config/rofi/launcher.rasi"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/rofi"
+
+    sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/alacritty"
+    cp "${SCRIPT_DIR}/configs/alacritty/alacritty.toml" "$REAL_HOME/.config/alacritty/alacritty.toml"
+    chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/alacritty"
+
+    success "dwm compiled and installed from source for user: ${REAL_USER}"
+    info "Add 'exec dwm' to ~/.xinitrc to start it from a TTY."
 }
 
 # ── KDE Plasma (minimal desktop + sddm) ──────────────────────────
@@ -757,8 +1393,15 @@ install_fastfetch() {
     if ! $FF_INSTALLED; then
         warn "fastfetch could not be installed automatically."
         warn "Install manually: https://github.com/fastfetch-cli/fastfetch/releases"
-        return
     fi
+
+    # Also install screenfetch as a lightweight alternative
+    info "Installing screenfetch (lightweight alternative)..."
+    case $BASE in
+        debian) $PM_INSTALL screenfetch 2>/dev/null || true ;;
+        fedora) $PM_INSTALL screenfetch 2>/dev/null || true ;;
+        arch)   $PM_INSTALL screenfetch 2>/dev/null || true ;;
+    esac
 
     # Deploy config and ASCII art to the real user's home
     sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/fastfetch"
@@ -843,9 +1486,21 @@ print_summary() {
     echo "  Dev        : Node/nvm, Python, Docker, Rust, Go, Java/SDKMAN, PostgreSQL client"
     echo "               Beekeeper Studio, Opencode, tmux, jq, httpie"
     echo "  System     : Flatpak/Flathub, fastfetch"
+    if $INSTALL_BLUETOOTH;     then echo "  Drivers    : Bluetooth (bluez + blueman)"; fi
+    if $INSTALL_WIFI;          then echo "  Drivers    : WiFi / NetworkManager"; fi
+    if $INSTALL_MOUSE_DRIVERS; then echo "  Drivers    : Mouse / pointer (libinput)"; fi
+    if $INSTALL_GPU_DRIVERS;   then echo "  Drivers    : ${GPU_TYPE^^} GPU"; fi
+    if $INSTALL_PIPEWIRE;      then echo "  Audio      : PipeWire"; fi
     echo ""
     warn "Re-login (or reboot) for Docker group, nvm, and cargo PATH to take effect."
-    if $INSTALL_I3; then info "i3 configs deployed to: ${REAL_HOME}/.config/{i3,rofi,picom}"; fi
+    if $INSTALL_I3;       then info "i3       : ${REAL_HOME}/.config/{i3,picom,rofi,alacritty} — i3bar + i3status"; fi
+    if $INSTALL_BSPWM;    then info "bspwm    : ${REAL_HOME}/.config/{bspwm,sxhkd,polybar,rofi,alacritty}"; fi
+    if $INSTALL_AWESOME;  then info "awesome  : ${REAL_HOME}/.config/{awesome,picom,rofi,alacritty}"; fi
+    if $INSTALL_QTILE;    then info "qtile    : ${REAL_HOME}/.config/{qtile,picom,rofi,alacritty}"; fi
+    if $INSTALL_FLUXBOX;  then info "fluxbox  : ${REAL_HOME}/.fluxbox/{init,keys,menu,styles/Purple}"; fi
+    if $INSTALL_DWM;      then info "dwm      : compiled to /usr/local/bin/dwm — add 'exec dwm' to ~/.xinitrc"; fi
+    if $INSTALL_SWAY;     then info "sway     : ${REAL_HOME}/.config/{sway,waybar,rofi,alacritty}"; fi
+    if $INSTALL_HYPRLAND; then info "hyprland : ${REAL_HOME}/.config/{hypr,waybar,rofi,alacritty}"; fi
     info "All configs installed for user: ${REAL_USER}"
 }
 
@@ -857,18 +1512,33 @@ main() {
     echo "╚══════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 
+    check_unix
     detect_distro
     select_de
+    select_optional_drivers
 
     update_system
     install_base_deps
     install_aur_helper
     setup_flatpak
 
-    if $INSTALL_I3;       then install_i3; fi
-    if $INSTALL_KDE;      then install_kde; fi
-    if $INSTALL_XFCE;     then install_xfce; fi
-    if $INSTALL_CINNAMON; then install_cinnamon; fi
+    if $INSTALL_I3;        then install_i3; fi
+    if $INSTALL_BSPWM;     then install_bspwm; fi
+    if $INSTALL_AWESOME;   then install_awesome; fi
+    if $INSTALL_QTILE;     then install_qtile; fi
+    if $INSTALL_FLUXBOX;   then install_fluxbox; fi
+    if $INSTALL_DWM;       then install_dwm; fi
+    if $INSTALL_SWAY;      then install_sway; fi
+    if $INSTALL_HYPRLAND;  then install_hyprland; fi
+    if $INSTALL_KDE;       then install_kde; fi
+    if $INSTALL_XFCE;      then install_xfce; fi
+    if $INSTALL_CINNAMON;  then install_cinnamon; fi
+
+    if $INSTALL_BLUETOOTH;     then install_bluetooth; fi
+    if $INSTALL_WIFI;          then install_wifi; fi
+    if $INSTALL_MOUSE_DRIVERS; then install_mouse_drivers; fi
+    if $INSTALL_GPU_DRIVERS;   then install_gpu_drivers; fi
+    if $INSTALL_PIPEWIRE;      then install_pipewire; fi
 
     install_browsers
     install_editors

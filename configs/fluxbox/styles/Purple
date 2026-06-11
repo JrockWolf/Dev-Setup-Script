@@ -1,0 +1,102 @@
+! ================================================================
+!  Fluxbox Style — Black & Purple Theme
+! ================================================================
+
+! ── Toolbar (top bar) ────────────────────────────────────────────
+toolbar:                        flat
+toolbar.color:                  #0f0018
+toolbar.colorTo:                #0f0018
+toolbar.textColor:              #e2d9f3
+toolbar.fontColor:              #e2d9f3
+toolbar.justify:                center
+toolbar.height:                 28
+toolbar.borderColor:            #4b0082
+toolbar.borderWidth:            0
+toolbar.bevelWidth:             0
+
+toolbar.workspace.color:        #130020
+toolbar.workspace.colorTo:      #130020
+toolbar.workspace.textColor:    #9b30ff
+toolbar.workspace.justify:      center
+
+toolbar.iconbar.focused.color:       #130020
+toolbar.iconbar.focused.colorTo:     #130020
+toolbar.iconbar.focused.textColor:   #e2d9f3
+toolbar.iconbar.unfocused.color:     #0a0a0a
+toolbar.iconbar.unfocused.colorTo:   #0a0a0a
+toolbar.iconbar.unfocused.textColor: #666688
+
+toolbar.clock.color:            #0f0018
+toolbar.clock.colorTo:          #0f0018
+toolbar.clock.textColor:        #bf5fff
+toolbar.clock.justify:          center
+
+! ── Window title bars ────────────────────────────────────────────
+window.title.focus:              flat
+window.title.focus.color:        #130020
+window.title.focus.colorTo:      #130020
+window.title.focus.textColor:    #e2d9f3
+window.title.unfocus:            flat
+window.title.unfocus.color:      #0a0a0a
+window.title.unfocus.colorTo:    #0a0a0a
+window.title.unfocus.textColor:  #666688
+
+window.bevelWidth:               0
+window.borderColor:              #9b30ff
+window.borderWidth:              2
+window.title.height:             24
+window.justify:                  left
+
+! Buttons
+window.button.focus:             flat
+window.button.focus.color:       #9b30ff
+window.button.focus.colorTo:     #4b0082
+window.button.focus.picColor:    #e2d9f3
+window.button.unfocus:           flat
+window.button.unfocus.color:     #1e1e2e
+window.button.unfocus.colorTo:   #1e1e2e
+window.button.unfocus.picColor:  #666688
+window.button.pressed:           flat
+window.button.pressed.color:     #bf5fff
+window.button.pressed.colorTo:   #9b30ff
+
+! Grip / handle
+window.handle.focus:             flat
+window.handle.focus.color:       #9b30ff
+window.handle.focus.colorTo:     #9b30ff
+window.handle.unfocus:           flat
+window.handle.unfocus.color:     #1e1e2e
+window.handle.unfocus.colorTo:   #1e1e2e
+window.handleWidth:              2
+
+! ── Menus ────────────────────────────────────────────────────────
+menu.title:                      flat
+menu.title.color:                #130020
+menu.title.colorTo:              #130020
+menu.title.textColor:            #9b30ff
+menu.title.justify:              center
+
+menu.frame:                      flat
+menu.frame.color:                #0a0a0a
+menu.frame.colorTo:              #0a0a0a
+menu.frame.textColor:            #e2d9f3
+menu.frame.justify:              left
+
+menu.hilite:                     flat
+menu.hilite.color:               #130020
+menu.hilite.colorTo:             #130020
+menu.hilite.textColor:           #bf5fff
+
+menu.borderColor:                #4b0082
+menu.borderWidth:                1
+menu.bevelWidth:                 2
+
+! ── Slit ─────────────────────────────────────────────────────────
+slit:                            flat
+slit.color:                      #0a0a0a
+slit.colorTo:                    #0a0a0a
+slit.borderColor:                #4b0082
+slit.borderWidth:                1
+
+! ── Font ─────────────────────────────────────────────────────────
+*.font:                          monospace-10

@@ -1,0 +1,19 @@
+[begin] (Fluxbox)
+  [exec]  (Terminal)      {alacritty}
+  [exec]  (Launcher)      {rofi -show drun -theme ~/.config/rofi/launcher.rasi}
+  [separator]
+  [submenu] (Applications)
+    [exec]  (Firefox)      {firefox}
+    [exec]  (Brave)        {brave-browser}
+    [exec]  (VSCode)       {code}
+    [exec]  (Volume)       {pavucontrol}
+    [exec]  (Appearance)   {lxappearance}
+  [end]
+  [separator]
+  [submenu] (Workspaces)
+    [workspaces]
+  [end]
+  [separator]
+  [restart] (Restart Fluxbox)
+  [exit]    (Exit Fluxbox)
+[end]
