@@ -169,17 +169,17 @@ select_de() {
     esac
 
     echo ""
-    $INSTALL_I3       && info "Will install: i3 (i3bar + i3status)"
-    $INSTALL_SWAY     && info "Will install: Sway (waybar)"
-    $INSTALL_HYPRLAND && info "Will install: Hyprland (waybar)"
-    $INSTALL_BSPWM    && info "Will install: bspwm (polybar)"
-    $INSTALL_AWESOME  && info "Will install: AwesomeWM"
-    $INSTALL_QTILE    && info "Will install: Qtile"
-    $INSTALL_FLUXBOX  && info "Will install: Fluxbox"
-    $INSTALL_DWM      && info "Will install: dwm (compiled from source)"
-    $INSTALL_KDE      && info "Will install: KDE Plasma"
-    $INSTALL_XFCE     && info "Will install: XFCE"
-    $INSTALL_CINNAMON && info "Will install: Cinnamon"
+    if $INSTALL_I3;       then info "Will install: i3 (i3bar + i3status)"; fi
+    if $INSTALL_SWAY;     then info "Will install: Sway (waybar)"; fi
+    if $INSTALL_HYPRLAND; then info "Will install: Hyprland (waybar)"; fi
+    if $INSTALL_BSPWM;    then info "Will install: bspwm (polybar)"; fi
+    if $INSTALL_AWESOME;  then info "Will install: AwesomeWM"; fi
+    if $INSTALL_QTILE;    then info "Will install: Qtile"; fi
+    if $INSTALL_FLUXBOX;  then info "Will install: Fluxbox"; fi
+    if $INSTALL_DWM;      then info "Will install: dwm (compiled from source)"; fi
+    if $INSTALL_KDE;      then info "Will install: KDE Plasma"; fi
+    if $INSTALL_XFCE;     then info "Will install: XFCE"; fi
+    if $INSTALL_CINNAMON; then info "Will install: Cinnamon"; fi
     return 0
 }
 
@@ -1246,6 +1246,14 @@ install_comms() {
 install_media() {
     header "Installing media apps"
 
+    # Enable RPM Fusion on Fedora (required for VLC and OBS)
+    if [ "$BASE" = "fedora" ]; then
+        info "Enabling RPM Fusion Free repo (required for VLC and OBS)..."
+        sudo dnf install -y \
+            "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" \
+            2>/dev/null || warn "RPM Fusion Free install failed — VLC/OBS may not install."
+    fi
+
     # OBS Studio
     case $BASE in
         debian)
@@ -1291,7 +1299,7 @@ install_dev_tools() {
     # Build essentials
     case $BASE in
         debian) $PM_INSTALL build-essential pkg-config libssl-dev ;;
-        fedora) $PM_INSTALL gcc gcc-c++ make openssl-devel ;;
+        fedora) $PM_INSTALL gcc gcc-c++ make pkgconf openssl-devel ;;
         arch)   $PM_INSTALL base-devel openssl ;;
     esac
 
@@ -1301,6 +1309,7 @@ install_dev_tools() {
         fedora) $PM_INSTALL git git-lfs ;;
         arch)   $PM_INSTALL git git-lfs ;;
     esac
+    sudo -u "$REAL_USER" git lfs install 2>/dev/null || true
     success "Build tools + Git installed"
 
     # tmux

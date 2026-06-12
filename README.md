@@ -1,150 +1,117 @@
-# Linux Machine Setup
+# Linux Setup
 
-Automated setup script for a fresh Linux install. Supports **Debian-based**, **Fedora-based**, and **Arch-based** distros. Applies a **black & purple** theme for i3 + polybar.
+My personal script for setting up a fresh Linux install the way I like it. Run it once on a new machine and everything is configured and ready to go.
 
-## Quick Start
+Supports **Debian-based**, **Fedora-based**, and **Arch-based** distros. Black & purple theme throughout.
+
+## Usage
 
 ```bash
-git clone <this-repo> ~/linux-setup
+git clone https://github.com/JrockWolf/Dev-Setup-Script.git ~/linux-setup
 cd ~/linux-setup
-chmod +x install.sh
-./install.sh
+sudo bash install.sh
 ```
 
-The script auto-detects your distro and asks which desktop environment(s) to install before doing anything.
+The script auto-detects your distro, asks which WM/DE you want, and asks about optional hardware drivers before touching anything.
 
 ---
 
 ## What Gets Installed
 
-### Desktop Environments (you choose)
-| DE | Display Manager | Notes |
-|---|---|---|
-| **i3** | LightDM | Full config deployed: polybar, picom, rofi |
-| **KDE Plasma** | SDDM | Minimal install, apply purple theme manually |
-| **XFCE** | LightDM | Minimal install, apply theme manually |
-| **Cinnamon** | LightDM | Minimal install, apply theme manually |
+### Window Managers / Desktop Environments
+Pick one or more at the prompt:
+
+| WM / DE | Type | Bar | Display Manager |
+|---|---|---|---|
+| **i3** | X11 tiling | i3status | LightDM |
+| **bspwm** | X11 tiling | Polybar | LightDM |
+| **AwesomeWM** | X11 dynamic | wibox | LightDM |
+| **Qtile** | X11 tiling | built-in | LightDM |
+| **Fluxbox** | X11 stacking | built-in toolbar | LightDM |
+| **dwm** | X11 minimal | built-in | LightDM |
+| **Sway** | Wayland tiling | Waybar | SDDM |
+| **Hyprland** | Wayland compositor | Waybar | SDDM |
+| **KDE Plasma** | Full DE | Plasma panel | SDDM |
+| **XFCE** | Full DE | XFCE panel | LightDM |
+| **Cinnamon** | Full DE | Cinnamon panel | LightDM |
+
+All WM configs are deployed automatically from the `configs/` directory to `~/.config/`.
+
+### Optional Hardware
+- Bluetooth (bluez + blueman)
+- WiFi / NetworkManager
+- Mouse / pointer drivers (libinput)
+- GPU drivers — NVIDIA (proprietary), AMD, or Intel
+- PipeWire (replaces PulseAudio)
 
 ### Browsers
-- **Firefox** — native package
-- **Brave** — official repo (all distros)
-- **Librewolf** — Flatpak
+- **Firefox** — native package, Flatpak fallback
+- **Brave** — official repo, Flatpak fallback
+- **Librewolf** — Flatpak, native repo fallback
 
 ### Editors
-- **Neovim** — latest stable
-- **Helix** — latest stable
+- **Neovim** — latest stable binary
+- **Helix** — latest stable binary
 - **VSCode** — official Microsoft repo
 
 ### Communication
-- **Discord** — native deb (Debian) / Flatpak (Fedora/Arch)
+- **Discord** — native deb on Debian, Flatpak on Fedora/Arch
 - **Telegram** — Flatpak
 
 ### Media
 - **OBS Studio** — native package
-- **VLC** — native package
+- **VLC** — native package (RPM Fusion auto-enabled on Fedora)
 - **Spotify** — Flatpak
-- **Dopamine** — Flatpak (or see manual note below)
+- **Dopamine** — Flatpak
 
 ### Productivity
 - **Obsidian** — Flatpak
 
-### Full-Stack Dev Tools
-| Tool | Method |
+### Dev Tools
+| Tool | How |
 |---|---|
-| Node.js (LTS) | nvm |
-| Python 3 + pip | native |
-| Docker + Compose | get.docker.com script |
+| Node.js LTS | nvm |
+| Python 3 + pip + venv | native |
+| Docker + Compose | get.docker.com |
 | Rust + Cargo | rustup |
-| Go | native / go.dev binary |
+| Go | go.dev binary (Debian) / native (Fedora/Arch) |
+| Java 21 LTS | SDKMAN (Temurin) |
 | PostgreSQL client | native |
 | tmux | native |
 | jq + httpie + curl + wget | native |
 | Beekeeper Studio | Flatpak |
-| Opencode CLI | npm / opencode.ai installer |
+| Opencode CLI | npm / opencode.ai |
+| Git LFS | native + `git lfs install` |
 
 ### System
-- **Flatpak + Flathub**
-- **fastfetch** — with custom wolf ASCII art (Blazej Kozlowski)
+- **Flatpak + Flathub** (system-wide)
+- **fastfetch** with custom wolf ASCII art
 
 ---
 
-## i3 Theme (Black & Purple)
+## Theme
 
-Configs are deployed automatically when you select i3:
+Everything uses a black & purple palette:
 
-```
-~/.config/i3/config          # i3 WM configuration
-~/.config/polybar/config.ini # Bar (purple, top of screen)
-~/.config/polybar/launch.sh  # Multi-monitor launch script
-~/.config/picom/picom.conf   # Compositor (shadows, blur, rounded corners)
-~/.config/rofi/launcher.rasi # App launcher theme
-~/.config/fastfetch/         # System info + wolf ASCII art
-```
-
-### Color Palette
-| Name | Hex | Use |
-|---|---|---|
-| Background | `#0a0a0a` | Window/bar background |
-| Dark purple | `#130020` | Active window bg, panel bg |
-| Purple | `#9b30ff` | Focused borders, active WS |
-| Glow purple | `#bf5fff` | Icons, highlights |
-| Indigo | `#4b0082` | Inactive borders |
-| Text | `#e2d9f3` | Foreground text |
-
-### Key Bindings (i3)
-| Key | Action |
+| Role | Hex |
 |---|---|
-| `Super + Enter` | Open terminal |
-| `Super + D` | Rofi app launcher |
-| `Super + Tab` | Rofi window switcher |
-| `Super + Q` | Kill focused window |
-| `Super + H/J/K/L` | Focus left/down/up/right |
-| `Super + Shift + H/J/K/L` | Move window |
-| `Super + F` | Fullscreen toggle |
-| `Super + R` | Resize mode |
-| `Super + 1–0` | Switch workspace |
-| `Super + Shift + 1–0` | Move to workspace |
-| `Print` | Full screenshot → ~/Pictures/ |
-| `Super + Print` | Window screenshot |
-| `Shift + Print` | Region screenshot |
-| `Super + Shift + R` | Restart i3 |
-| `Super + Shift + E` | Exit i3 |
+| Background | `#0a0a0a` |
+| Panel / active bg | `#130020` |
+| Accent / focused borders | `#9b30ff` |
+| Highlights / icons | `#bf5fff` |
+| Inactive borders | `#4b0082` |
+| Text | `#e2d9f3` |
 
-### Wallpaper
-Place a wallpaper at `~/.config/i3/wallpaper.jpg` — it will be applied automatically on i3 start. Swap `feh` for `nitrogen` in the i3 config if you prefer a GUI picker.
+Config files are in `configs/` and deployed automatically by the installer.
 
 ---
 
-## Applying Themes for KDE / XFCE / Cinnamon
+## Notes
 
-For non-i3 DEs, apply the purple theme manually after first login:
+**Reboot/re-login required for:** Docker group membership, nvm, Cargo PATH, Go PATH (Debian).
 
-### KDE Plasma
-1. System Settings → Appearance → Global Theme → **Breeze Dark**
-2. Install **Kvantum** theme manager, apply **KvArcDark** or **Nightfall**
-3. System Settings → Colors → set accent color to `#9b30ff`
-4. Taskbar → right-click → Edit Panel → set panel color to dark
+**Hyprland on Debian:** Not officially supported — the script installs the Wayland tooling but Hyprland itself must be built from source. See the [Hyprland wiki](https://wiki.hyprland.org/Getting-Started/Installation/).
 
-### XFCE
-1. Appearance → Style: install **Materia-Dark** or **Orchis-Purple**
-2. Window Manager → Style: match or use Materia
-3. Panel Preferences → Appearance → Background: custom color `#130020`
+**Dopamine:** If the Flatpak isn't on Flathub yet, grab the release from [GitHub](https://github.com/digimezzo/dopamine/releases).
 
-### Cinnamon
-1. System Settings → Themes → install **Orchis-Purple-Dark** or similar
-2. Panel → Panel Settings → set panel color
-
----
-
-## Manual Notes
-
-**Dopamine**: If Flatpak install fails (package not yet on Flathub), download the AppImage/deb/rpm directly from  
-https://github.com/digimezzo/dopamine/releases
-
-**Docker group**: After install you must log out and back in (or run `newgrp docker`) for the group change to take effect.
-
-**nvm / Rust**: Both are added to your shell RC file. Run `source ~/.bashrc` (or `~/.zshrc`) or open a new terminal.
-
-**Go (Debian)**: The binary is placed at `/usr/local/go/bin/go`. This path is added to `~/.profile` (takes effect on next login).
-
-**Network module (polybar)**: Edit `~/.config/polybar/config.ini` and set `interface-type = wired` if you're on ethernet, or change the interface name to match `ip a` output.
+**Polybar network module:** Edit `~/.config/polybar/config.ini` and set the interface name to match `ip a` output.
