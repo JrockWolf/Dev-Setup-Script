@@ -1433,57 +1433,10 @@ install_dev_tools() {
 install_fastfetch() {
     header "Installing fastfetch"
 
-    FF_INSTALLED=false
-
-    # Direct latest-release download URL — no GitHub API call, no rate limiting
-    local FF_DEB_URL="https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb"
-    local FF_RPM_URL="https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.rpm"
-
     case $BASE in
-        debian)
-            info "Trying fastfetch from apt (available in Trixie+)..."
-            if sudo apt-get install -y -q fastfetch 2>/dev/null; then
-                FF_INSTALLED=true
-            else
-                info "Not in apt repos — downloading .deb from GitHub..."
-                if curl -fL --max-time 60 -o /tmp/fastfetch.deb "$FF_DEB_URL"; then
-                    sudo apt-get install -y -q /tmp/fastfetch.deb && FF_INSTALLED=true
-                    rm -f /tmp/fastfetch.deb
-                else
-                    warn "fastfetch .deb download failed."
-                fi
-            fi
-            ;;
-        fedora)
-            info "Trying fastfetch from dnf..."
-            if $PM_INSTALL fastfetch 2>/dev/null; then
-                FF_INSTALLED=true
-            else
-                info "Not in dnf repos — downloading .rpm from GitHub..."
-                if curl -fL --max-time 60 -o /tmp/fastfetch.rpm "$FF_RPM_URL"; then
-                    sudo rpm -i /tmp/fastfetch.rpm && FF_INSTALLED=true
-                    rm -f /tmp/fastfetch.rpm
-                else
-                    warn "fastfetch .rpm download failed."
-                fi
-            fi
-            ;;
-        arch)
-            if $PM_INSTALL fastfetch 2>/dev/null; then FF_INSTALLED=true; fi
-            ;;
-    esac
-
-    if ! $FF_INSTALLED; then
-        warn "fastfetch could not be installed automatically."
-        warn "Install manually: https://github.com/fastfetch-cli/fastfetch/releases"
-    fi
-
-    # Also install screenfetch as a lightweight alternative
-    info "Installing screenfetch (lightweight alternative)..."
-    case $BASE in
-        debian) $PM_INSTALL screenfetch 2>/dev/null || true ;;
-        fedora) $PM_INSTALL screenfetch 2>/dev/null || true ;;
-        arch)   $PM_INSTALL screenfetch 2>/dev/null || true ;;
+        debian) $PM_INSTALL fastfetch ;;
+        fedora) $PM_INSTALL fastfetch ;;
+        arch)   $PM_INSTALL fastfetch ;;
     esac
 
     # Deploy config and ASCII art to the real user's home
