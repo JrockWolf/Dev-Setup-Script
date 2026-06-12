@@ -407,7 +407,6 @@ install_base_deps() {
         debian)
             $PM_INSTALL \
                 curl wget git gnupg2 apt-transport-https ca-certificates \
-                software-properties-common \
                 xorg xinit xdg-utils \
                 flatpak pulseaudio pulseaudio-utils
             ;;
