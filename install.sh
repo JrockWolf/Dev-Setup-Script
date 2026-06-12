@@ -1441,8 +1441,12 @@ install_fastfetch() {
 
     # Deploy config and ASCII art to the real user's home
     sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.config/fastfetch"
-    cp "${SCRIPT_DIR}/configs/fastfetch/config.jsonc" "$REAL_HOME/.config/fastfetch/config.jsonc"
-    cp "${SCRIPT_DIR}/configs/fastfetch/wolf.txt"     "$REAL_HOME/.config/fastfetch/wolf.txt"
+    # Replace the ~ placeholder with the real absolute path so fastfetch
+    # can locate wolf.txt regardless of how it handles ~ expansion
+    sed "s|~/.config/fastfetch/wolf.txt|${REAL_HOME}/.config/fastfetch/wolf.txt|g" \
+        "${SCRIPT_DIR}/configs/fastfetch/config.jsonc" \
+        > "$REAL_HOME/.config/fastfetch/config.jsonc"
+    cp "${SCRIPT_DIR}/configs/fastfetch/wolf.txt" "$REAL_HOME/.config/fastfetch/wolf.txt"
     chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config/fastfetch"
 
     success "fastfetch installed and configured for user: ${REAL_USER}"
@@ -1467,9 +1471,10 @@ update_shell() {
 
     info "Updating ${SHELL_RC}"
 
-    # fastfetch on terminal start
+    # fastfetch on terminal start — pass logo explicitly so the wolf ASCII art
+    # always loads regardless of ~ expansion in the JSON config
     grep -qF 'fastfetch' "$SHELL_RC" \
-        || echo -e '\n# Show system info on terminal start\n[ -z "$TMUX" ] && fastfetch' >> "$SHELL_RC"
+        || echo -e "\n# Show system info on terminal start\n[ -z \"\$TMUX\" ] && fastfetch --logo \"\$HOME/.config/fastfetch/wolf.txt\" --logo-type file" >> "$SHELL_RC"
 
     # nvm
     grep -qF 'NVM_DIR' "$SHELL_RC" || cat >> "$SHELL_RC" <<'SHELLEOF'
