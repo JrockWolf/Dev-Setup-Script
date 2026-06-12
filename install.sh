@@ -232,11 +232,11 @@ select_optional_drivers() {
     [[ "$r" =~ ^[Yy] ]] && INSTALL_PIPEWIRE=true
 
     echo ""
-    $INSTALL_BLUETOOTH     && info "Will install: Bluetooth"
-    $INSTALL_WIFI          && info "Will install: WiFi / NetworkManager"
-    $INSTALL_MOUSE_DRIVERS && info "Will install: Mouse / input drivers (libinput)"
-    $INSTALL_GPU_DRIVERS   && info "Will install: ${GPU_TYPE^^} GPU drivers"
-    $INSTALL_PIPEWIRE      && info "Will install: PipeWire (replaces PulseAudio)"
+    if $INSTALL_BLUETOOTH;     then info "Will install: Bluetooth"; fi
+    if $INSTALL_WIFI;          then info "Will install: WiFi / NetworkManager"; fi
+    if $INSTALL_MOUSE_DRIVERS; then info "Will install: Mouse / input drivers (libinput)"; fi
+    if $INSTALL_GPU_DRIVERS;   then info "Will install: ${GPU_TYPE^^} GPU drivers"; fi
+    if $INSTALL_PIPEWIRE;      then info "Will install: PipeWire (replaces PulseAudio)"; fi
 }
 
 # ── Bluetooth ────────────────────────────────────────────────────
@@ -291,7 +291,12 @@ install_gpu_drivers() {
         nvidia)
             case $BASE in
                 debian)
-                    $PM_INSTALL nvidia-driver nvidia-settings
+                    # Enable non-free repos (required for NVIDIA proprietary driver)
+                    grep -qE '\bnon-free\b' /etc/apt/sources.list \
+                        || sudo sed -i 's/^\(deb[[:space:]][^#]*main\)/\1 contrib non-free non-free-firmware/' \
+                            /etc/apt/sources.list
+                    sudo apt-get update -qq
+                    $PM_INSTALL nvidia-driver firmware-misc-nonfree nvidia-settings
                     ;;
                 fedora)
                     $PM_INSTALL akmod-nvidia xorg-x11-drv-nvidia nvidia-settings
@@ -306,12 +311,17 @@ install_gpu_drivers() {
         amd)
             case $BASE in
                 debian)
+                    # Enable non-free-firmware (required for AMD firmware blobs)
+                    grep -qE '\bnon-free\b' /etc/apt/sources.list \
+                        || sudo sed -i 's/^\(deb[[:space:]][^#]*main\)/\1 contrib non-free non-free-firmware/' \
+                            /etc/apt/sources.list
+                    sudo apt-get update -qq
                     $PM_INSTALL xserver-xorg-video-amdgpu \
                         firmware-amd-graphics mesa-vulkan-drivers
                     ;;
                 fedora)
                     $PM_INSTALL xorg-x11-drv-amdgpu \
-                        mesa-vulkan-drivers-amdgpu mesa-dri-drivers
+                        mesa-vulkan-drivers mesa-dri-drivers
                     ;;
                 arch)
                     $PM_INSTALL xf86-video-amdgpu mesa vulkan-radeon \
@@ -356,6 +366,8 @@ install_pipewire() {
         fedora)
             $PM_INSTALL pipewire pipewire-pulseaudio wireplumber \
                 pipewire-alsa pipewire-jack-audio-connection-kit
+            sudo -u "$REAL_USER" systemctl --user --now enable \
+                pipewire pipewire-pulse wireplumber 2>/dev/null || true
             ;;
         arch)
             $PM_INSTALL pipewire pipewire-pulse wireplumber \
@@ -395,18 +407,20 @@ install_base_deps() {
         debian)
             $PM_INSTALL \
                 curl wget git gnupg2 apt-transport-https ca-certificates \
+                software-properties-common \
                 xorg xinit xdg-utils \
                 flatpak pulseaudio pulseaudio-utils
             ;;
         fedora)
             $PM_INSTALL \
-                curl wget git gnupg2 xorg-x11-server-Xorg xinit xdg-utils \
+                curl wget git gnupg2 dnf-plugins-core \
+                xorg-x11-server-Xorg xinit xdg-utils \
                 flatpak pulseaudio pulseaudio-utils
             ;;
         arch)
             $PM_INSTALL \
                 curl wget git gnupg xorg-server xorg-xinit xdg-utils \
-                flatpak pulseaudio pulseaudio-utils
+                flatpak pulseaudio pulseaudio-alsa
             ;;
     esac
 
@@ -427,14 +441,18 @@ install_aur_helper() {
 
     header "Installing paru (AUR helper)"
     $PM_INSTALL base-devel
-    git clone --depth=1 https://aur.archlinux.org/paru.git /tmp/paru-build
-    (cd /tmp/paru-build && makepkg -si --noconfirm)
+    local build_dir
+    build_dir="$(mktemp -d /tmp/paru-build.XXXXXX)"
+    git clone --depth=1 https://aur.archlinux.org/paru.git "$build_dir"
+    chown -R "$REAL_USER:$REAL_USER" "$build_dir"
+    sudo -u "$REAL_USER" bash -c "cd '$build_dir' && makepkg -si --noconfirm"
+    rm -rf "$build_dir"
     AUR_HELPER="paru"
     success "paru installed"
 }
 
 aur_install() {
-    [ "$BASE" = "arch" ] && ${AUR_HELPER:-paru} -S --noconfirm --needed "$@"
+    [ "$BASE" = "arch" ] && sudo -u "$REAL_USER" ${AUR_HELPER:-paru} -S --noconfirm --needed "$@"
 }
 
 # ── Flatpak setup ────────────────────────────────────────────────
@@ -453,7 +471,7 @@ install_i3() {
     case $BASE in
         debian)
             $PM_INSTALL \
-                i3 i3status rofi picom feh nitrogen alacritty \
+                i3 i3status rofi picom feh nitrogen alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 fonts-font-awesome fonts-noto-color-emoji \
                 pavucontrol lxappearance maim xdotool brightnessctl
@@ -461,7 +479,7 @@ install_i3() {
             ;;
         fedora)
             $PM_INSTALL \
-                i3 i3status rofi picom feh nitrogen alacritty \
+                i3 i3status rofi picom feh nitrogen alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 fontawesome-fonts google-noto-emoji-color-fonts \
                 pavucontrol lxappearance maim xdotool brightnessctl
@@ -469,7 +487,7 @@ install_i3() {
             ;;
         arch)
             $PM_INSTALL \
-                i3-wm i3status rofi picom feh nitrogen alacritty \
+                i3-wm i3status rofi picom feh nitrogen alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 ttf-font-awesome noto-fonts-emoji \
                 pavucontrol lxappearance maim xdotool brightnessctl
@@ -516,30 +534,30 @@ install_sway() {
                 sway waybar rofi alacritty \
                 swaybg swaylock swayidle \
                 grim slurp mako-notifier \
-                lightdm lightdm-gtk-greeter \
+                sddm xwayland \
                 fonts-font-awesome fonts-noto-color-emoji \
                 pavucontrol lxappearance brightnessctl
-            sudo systemctl enable lightdm
+            sudo systemctl enable sddm
             ;;
         fedora)
             $PM_INSTALL \
                 sway waybar rofi alacritty \
                 swaybg swaylock swayidle \
                 grim slurp mako \
-                lightdm lightdm-gtk-greeter \
+                sddm xorg-x11-server-Xwayland \
                 fontawesome-fonts google-noto-emoji-color-fonts \
                 pavucontrol lxappearance brightnessctl
-            sudo systemctl enable lightdm
+            sudo systemctl enable sddm
             ;;
         arch)
             $PM_INSTALL \
                 sway waybar rofi alacritty \
                 swaybg swaylock swayidle \
                 grim slurp mako \
-                lightdm lightdm-gtk-greeter \
+                sddm xorg-xwayland \
                 ttf-font-awesome noto-fonts-emoji \
                 pavucontrol lxappearance brightnessctl
-            sudo systemctl enable lightdm
+            sudo systemctl enable sddm
             ;;
     esac
 
@@ -641,7 +659,7 @@ install_awesome() {
     case $BASE in
         debian)
             $PM_INSTALL \
-                awesome picom rofi feh nitrogen alacritty \
+                awesome picom rofi feh nitrogen alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 fonts-font-awesome fonts-noto-color-emoji \
                 pavucontrol lxappearance maim xdotool brightnessctl lua5.4
@@ -649,7 +667,7 @@ install_awesome() {
             ;;
         fedora)
             $PM_INSTALL \
-                awesome picom rofi feh nitrogen alacritty \
+                awesome picom rofi feh nitrogen alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 fontawesome-fonts google-noto-emoji-color-fonts \
                 pavucontrol lxappearance maim xdotool brightnessctl lua
@@ -657,7 +675,7 @@ install_awesome() {
             ;;
         arch)
             $PM_INSTALL \
-                awesome picom rofi feh nitrogen alacritty \
+                awesome picom rofi feh nitrogen alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 ttf-font-awesome noto-fonts-emoji \
                 pavucontrol lxappearance maim xdotool brightnessctl lua
@@ -700,10 +718,10 @@ install_qtile() {
                 $PM_INSTALL python3-pip python3-xcb python3-cairocffi \
                     libxcb-render0-dev libffi-dev libpangocairo-1.0-0 \
                     python3-dbus python3-psutil python3-gobject
-                sudo pip3 install qtile
+                sudo pip3 install --break-system-packages qtile
             fi
             $PM_INSTALL \
-                picom rofi feh nitrogen alacritty \
+                picom rofi feh nitrogen alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 fonts-font-awesome fonts-noto-color-emoji \
                 pavucontrol lxappearance maim xdotool brightnessctl
@@ -715,10 +733,10 @@ install_qtile() {
             else
                 $PM_INSTALL python3-pip python3-xcb-proto python3-cairocffi \
                     libffi-devel python3-dbus python3-psutil python3-gobject3
-                sudo pip3 install qtile
+                sudo pip3 install --break-system-packages qtile
             fi
             $PM_INSTALL \
-                picom rofi feh nitrogen alacritty \
+                picom rofi feh nitrogen alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 fontawesome-fonts google-noto-emoji-color-fonts \
                 pavucontrol lxappearance maim xdotool brightnessctl
@@ -726,7 +744,7 @@ install_qtile() {
             ;;
         arch)
             $PM_INSTALL \
-                qtile picom rofi feh nitrogen alacritty \
+                qtile picom rofi feh nitrogen alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 ttf-font-awesome noto-fonts-emoji \
                 pavucontrol lxappearance maim xdotool brightnessctl
@@ -785,8 +803,10 @@ install_hyprland() {
                 hyprland waybar rofi alacritty \
                 hyprpaper hypridle hyprlock \
                 grim slurp mako jq \
+                sddm xorg-xwayland \
                 ttf-font-awesome noto-fonts-emoji \
                 pavucontrol lxappearance brightnessctl
+            sudo systemctl enable sddm
             ;;
         fedora)
             sudo dnf copr enable solopasha/hyprland -y
@@ -794,8 +814,10 @@ install_hyprland() {
                 hyprland waybar rofi alacritty \
                 hyprpaper hypridle hyprlock \
                 grim slurp mako jq \
+                sddm xorg-x11-server-Xwayland \
                 fontawesome-fonts google-noto-emoji-color-fonts \
                 pavucontrol lxappearance brightnessctl
+            sudo systemctl enable sddm
             ;;
         debian)
             warn "Installing minimal Wayland toolchain for Hyprland on Debian."
@@ -842,7 +864,7 @@ install_fluxbox() {
     case $BASE in
         debian)
             $PM_INSTALL \
-                fluxbox rofi feh nitrogen alacritty \
+                fluxbox rofi feh nitrogen alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 fonts-font-awesome fonts-noto-color-emoji \
                 pavucontrol lxappearance maim xdotool brightnessctl
@@ -850,7 +872,7 @@ install_fluxbox() {
             ;;
         fedora)
             $PM_INSTALL \
-                fluxbox rofi feh nitrogen alacritty \
+                fluxbox rofi feh nitrogen alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 fontawesome-fonts google-noto-emoji-color-fonts \
                 pavucontrol lxappearance maim xdotool brightnessctl
@@ -858,7 +880,7 @@ install_fluxbox() {
             ;;
         arch)
             $PM_INSTALL \
-                fluxbox rofi feh nitrogen alacritty \
+                fluxbox rofi feh nitrogen alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 ttf-font-awesome noto-fonts-emoji \
                 pavucontrol lxappearance maim xdotool brightnessctl
@@ -895,21 +917,21 @@ install_dwm() {
     case $BASE in
         debian)
             $PM_INSTALL build-essential libx11-dev libxft-dev libxinerama-dev \
-                dmenu rofi alacritty \
+                dmenu rofi alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 fonts-font-awesome pavucontrol maim xdotool brightnessctl
             sudo systemctl enable lightdm
             ;;
         fedora)
             $PM_INSTALL gcc make libX11-devel libXft-devel libXinerama-devel \
-                dmenu rofi alacritty \
+                dmenu rofi alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 fontawesome-fonts pavucontrol maim xdotool brightnessctl
             sudo systemctl enable lightdm
             ;;
         arch)
             $PM_INSTALL base-devel libx11 libxft libxinerama \
-                dmenu rofi alacritty \
+                dmenu rofi alacritty dunst \
                 lightdm lightdm-gtk-greeter \
                 ttf-font-awesome pavucontrol maim xdotool brightnessctl
             sudo systemctl enable lightdm
@@ -1074,6 +1096,7 @@ https://brave-browser-apt-release.s3.brave.com/ stable main" \
 
     # ── Librewolf — Flatpak primary, native repo fallback ─────────
     info "Installing Librewolf..."
+    LIBREWOLF_OK=false
     if flatpak install -y flathub io.gitlab.librewolf-community.LibreWolf 2>/dev/null; then
         LIBREWOLF_OK=true
     else
@@ -1115,37 +1138,52 @@ install_editors() {
     header "Installing terminal editors (Neovim + Helix)"
 
     # Neovim
+    NV_INSTALLED=false
     case $BASE in
         debian)
             # Use official release binary for latest stable
-            NV_URL=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest \
+            NV_URL=$(curl -s --max-time 15 https://api.github.com/repos/neovim/neovim/releases/latest \
                 | grep -oP '"browser_download_url": "\K[^"]+nvim-linux-x86_64\.tar\.gz')
-            curl -Lo /tmp/nvim.tar.gz "$NV_URL"
-            sudo tar -xzf /tmp/nvim.tar.gz -C /opt
-            sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
+            if [ -z "$NV_URL" ]; then
+                warn "Could not resolve Neovim download URL — skipping Neovim."
+            else
+                curl -Lo /tmp/nvim.tar.gz "$NV_URL"
+                sudo tar -xzf /tmp/nvim.tar.gz -C /opt
+                sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
+                rm -f /tmp/nvim.tar.gz
+                NV_INSTALLED=true
+            fi
             ;;
-        fedora) $PM_INSTALL neovim ;;
-        arch)   $PM_INSTALL neovim ;;
+        fedora) $PM_INSTALL neovim; NV_INSTALLED=true ;;
+        arch)   $PM_INSTALL neovim; NV_INSTALLED=true ;;
     esac
-    success "Neovim installed"
+    if $NV_INSTALLED; then success "Neovim installed"; fi
 
     # Helix
+    HX_INSTALLED=false
     case $BASE in
         debian)
-            HX_URL=$(curl -s https://api.github.com/repos/helix-editor/helix/releases/latest \
+            HX_URL=$(curl -s --max-time 15 https://api.github.com/repos/helix-editor/helix/releases/latest \
                 | grep -oP '"browser_download_url": "\K[^"]+helix-[^"]+linux-x86_64\.tar\.xz')
-            curl -Lo /tmp/helix.tar.xz "$HX_URL"
-            sudo mkdir -p /opt/helix
-            sudo tar -xJf /tmp/helix.tar.xz -C /opt/helix --strip-components=1
-            sudo ln -sf /opt/helix/hx /usr/local/bin/hx
+            if [ -z "$HX_URL" ]; then
+                warn "Could not resolve Helix download URL — skipping Helix."
+            else
+                curl -Lo /tmp/helix.tar.xz "$HX_URL"
+                sudo mkdir -p /opt/helix
+                sudo tar -xJf /tmp/helix.tar.xz -C /opt/helix --strip-components=1
+                sudo ln -sf /opt/helix/hx /usr/local/bin/hx
+                rm -f /tmp/helix.tar.xz
+                HX_INSTALLED=true
+            fi
             ;;
         fedora)
             # Helix is in Fedora 38+ repos
             $PM_INSTALL helix || flatpak install -y flathub com.helix_editor.Helix
+            HX_INSTALLED=true
             ;;
-        arch) $PM_INSTALL helix ;;
+        arch) $PM_INSTALL helix; HX_INSTALLED=true ;;
     esac
-    success "Helix installed"
+    if $HX_INSTALLED; then success "Helix installed"; fi
 
     # VSCode
     case $BASE in
@@ -1188,6 +1226,7 @@ install_comms() {
                 "https://discord.com/api/download?platform=linux&format=deb"
             sudo dpkg -i /tmp/discord.deb
             sudo apt install -f -y
+            rm -f /tmp/discord.deb
             ;;
         fedora)
             flatpak install -y flathub com.discordapp.Discord
@@ -1306,8 +1345,8 @@ install_dev_tools() {
     case $BASE in
         debian) sudo apt install -y docker-compose-plugin 2>/dev/null || \
                 sudo apt install -y docker-compose 2>/dev/null || true ;;
-        fedora) $PM_INSTALL docker-compose ;;
-        arch)   $PM_INSTALL docker-compose ;;
+        fedora) $PM_INSTALL docker-compose-plugin 2>/dev/null || $PM_INSTALL docker-compose 2>/dev/null || true ;;
+        arch)   $PM_INSTALL docker-compose-plugin 2>/dev/null || $PM_INSTALL docker-compose 2>/dev/null || true ;;
     esac
 
     # Rust via rustup
@@ -1323,13 +1362,18 @@ install_dev_tools() {
     # Go
     case $BASE in
         debian)
-            GO_VER=$(curl -s "https://go.dev/VERSION?m=text" | head -1)
-            curl -Lo /tmp/go.tar.gz "https://go.dev/dl/${GO_VER}.linux-amd64.tar.gz"
-            sudo rm -rf /usr/local/go
-            sudo tar -C /usr/local -xzf /tmp/go.tar.gz
-            grep -qF '/usr/local/go/bin' "$HOME/.profile" \
-                || echo 'export PATH=$PATH:/usr/local/go/bin' >> "$HOME/.profile"
-            success "Go installed"
+            GO_VER=$(curl -s --max-time 15 "https://go.dev/VERSION?m=text" | head -1)
+            if [ -z "$GO_VER" ]; then
+                warn "Could not fetch Go version — skipping Go install."
+            else
+                curl -Lo /tmp/go.tar.gz "https://go.dev/dl/${GO_VER}.linux-amd64.tar.gz"
+                sudo rm -rf /usr/local/go
+                sudo tar -C /usr/local -xzf /tmp/go.tar.gz
+                rm -f /tmp/go.tar.gz
+                grep -qF '/usr/local/go/bin' "$REAL_HOME/.profile" \
+                    || echo 'export PATH=$PATH:/usr/local/go/bin' >> "$REAL_HOME/.profile"
+                success "Go installed"
+            fi
             ;;
         fedora) $PM_INSTALL golang; success "Go installed" ;;
         arch)   $PM_INSTALL go;     success "Go installed" ;;
@@ -1398,6 +1442,7 @@ install_fastfetch() {
                     curl -Lo /tmp/fastfetch.deb "$FF_URL"
                     # Use apt to install .deb so deps are resolved automatically
                     sudo apt-get install -y -q /tmp/fastfetch.deb && FF_INSTALLED=true
+                    rm -f /tmp/fastfetch.deb
                 fi
             fi
             ;;
@@ -1414,6 +1459,7 @@ install_fastfetch() {
                 if [ -n "$FF_URL" ]; then
                     curl -Lo /tmp/fastfetch.rpm "$FF_URL"
                     sudo rpm -i /tmp/fastfetch.rpm && FF_INSTALLED=true
+                    rm -f /tmp/fastfetch.rpm
                 fi
             fi
             ;;
