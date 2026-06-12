@@ -107,35 +107,60 @@ detect_distro() {
 select_de() {
     header "Desktop Environment Setup"
 
+    # ── Initialise ALL flags — missing ones caused 'unbound variable' abort ──
     INSTALL_I3=false
+    INSTALL_BSPWM=false
+    INSTALL_AWESOME=false
+    INSTALL_QTILE=false
+    INSTALL_FLUXBOX=false
+    INSTALL_DWM=false
+    INSTALL_SWAY=false
+    INSTALL_HYPRLAND=false
     INSTALL_KDE=false
     INSTALL_XFCE=false
     INSTALL_CINNAMON=false
-    INSTALL_SWAY=false
 
     echo "Which desktop environment / window manager would you like to install?"
-    echo "  1) i3        (X11 tiling WM — i3bar + i3status, purple themed)"
-    echo "  2) Sway      (Wayland tiling WM — waybar, purple themed)"
-    echo "  3) KDE Plasma"
-    echo "  4) XFCE"
-    echo "  5) Cinnamon"
-    echo "  6) Multiple  (choose below)"
+    echo "  1)  i3        (X11 tiling WM — i3bar + i3status, purple themed)"
+    echo "  2)  Sway      (Wayland tiling WM — waybar, purple themed)"
+    echo "  3)  Hyprland  (Wayland compositor — waybar, purple themed)"
+    echo "  4)  bspwm     (X11 tiling WM — polybar)"
+    echo "  5)  AwesomeWM (X11 dynamic WM — wibox)"
+    echo "  6)  Qtile     (X11 tiling WM — built-in bar)"
+    echo "  7)  Fluxbox   (X11 stacking WM — built-in toolbar)"
+    echo "  8)  dwm       (X11 minimal WM — compiled from source)"
+    echo "  9)  KDE Plasma"
+    echo "  10) XFCE"
+    echo "  11) Cinnamon"
+    echo "  12) Multiple  (choose below)"
     echo ""
-    read -rp "Enter choice [1-6]: " de_choice
+    read -rp "Enter choice [1-12]: " de_choice
 
     case $de_choice in
-        1) INSTALL_I3=true ;;
-        2) INSTALL_SWAY=true ;;
-        3) INSTALL_KDE=true ;;
-        4) INSTALL_XFCE=true ;;
-        5) INSTALL_CINNAMON=true ;;
-        6)
+        1)  INSTALL_I3=true ;;
+        2)  INSTALL_SWAY=true ;;
+        3)  INSTALL_HYPRLAND=true ;;
+        4)  INSTALL_BSPWM=true ;;
+        5)  INSTALL_AWESOME=true ;;
+        6)  INSTALL_QTILE=true ;;
+        7)  INSTALL_FLUXBOX=true ;;
+        8)  INSTALL_DWM=true ;;
+        9)  INSTALL_KDE=true ;;
+        10) INSTALL_XFCE=true ;;
+        11) INSTALL_CINNAMON=true ;;
+        12)
             echo ""
-            read -rp "  Install i3?       [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_I3=true; fi
-            read -rp "  Install Sway?     [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_SWAY=true; fi
-            read -rp "  Install KDE?      [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_KDE=true; fi
-            read -rp "  Install XFCE?     [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_XFCE=true; fi
-            read -rp "  Install Cinnamon? [y/N] " r; if [[ "$r" =~ ^[Yy] ]]; then INSTALL_CINNAMON=true; fi
+            read -rp "  Install i3?       [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_I3=true
+            read -rp "  Install Sway?     [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_SWAY=true
+            read -rp "  Install Hyprland? [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_HYPRLAND=true
+            read -rp "  Install bspwm?    [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_BSPWM=true
+            read -rp "  Install Awesome?  [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_AWESOME=true
+            read -rp "  Install Qtile?    [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_QTILE=true
+            read -rp "  Install Fluxbox?  [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_FLUXBOX=true
+            read -rp "  Install dwm?      [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_DWM=true
+            read -rp "  Install KDE?      [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_KDE=true
+            read -rp "  Install XFCE?     [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_XFCE=true
+            read -rp "  Install Cinnamon? [y/N] " r; [[ "$r" =~ ^[Yy] ]] && INSTALL_CINNAMON=true
             ;;
         *)
             warn "Invalid choice; defaulting to i3."
@@ -144,11 +169,18 @@ select_de() {
     esac
 
     echo ""
-    if $INSTALL_I3;       then info "Will install: i3 (i3bar + i3status)"; fi
-    if $INSTALL_SWAY;     then info "Will install: Sway (waybar)"; fi
-    if $INSTALL_KDE;      then info "Will install: KDE Plasma"; fi
-    if $INSTALL_XFCE;     then info "Will install: XFCE"; fi
-    if $INSTALL_CINNAMON; then info "Will install: Cinnamon"; fi
+    $INSTALL_I3       && info "Will install: i3 (i3bar + i3status)"
+    $INSTALL_SWAY     && info "Will install: Sway (waybar)"
+    $INSTALL_HYPRLAND && info "Will install: Hyprland (waybar)"
+    $INSTALL_BSPWM    && info "Will install: bspwm (polybar)"
+    $INSTALL_AWESOME  && info "Will install: AwesomeWM"
+    $INSTALL_QTILE    && info "Will install: Qtile"
+    $INSTALL_FLUXBOX  && info "Will install: Fluxbox"
+    $INSTALL_DWM      && info "Will install: dwm (compiled from source)"
+    $INSTALL_KDE      && info "Will install: KDE Plasma"
+    $INSTALL_XFCE     && info "Will install: XFCE"
+    $INSTALL_CINNAMON && info "Will install: Cinnamon"
+    return 0
 }
 
 # ── Optional driver / service selection ─────────────────────────
