@@ -1435,22 +1435,22 @@ install_fastfetch() {
 
     FF_INSTALLED=false
 
+    # Direct latest-release download URL — no GitHub API call, no rate limiting
+    local FF_DEB_URL="https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb"
+    local FF_RPM_URL="https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.rpm"
+
     case $BASE in
         debian)
             info "Trying fastfetch from apt (available in Trixie+)..."
             if sudo apt-get install -y -q fastfetch 2>/dev/null; then
                 FF_INSTALLED=true
             else
-                info "Not in repos — downloading from GitHub releases..."
-                FF_URL=$(curl -s --max-time 15 \
-                    https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
-                    | grep -oP '"browser_download_url":\s*"\K[^"]+linux-amd64\.deb' \
-                    | head -1)
-                if [ -n "$FF_URL" ]; then
-                    curl -Lo /tmp/fastfetch.deb "$FF_URL"
-                    # Use apt to install .deb so deps are resolved automatically
+                info "Not in apt repos — downloading .deb from GitHub..."
+                if curl -fL --max-time 60 -o /tmp/fastfetch.deb "$FF_DEB_URL"; then
                     sudo apt-get install -y -q /tmp/fastfetch.deb && FF_INSTALLED=true
                     rm -f /tmp/fastfetch.deb
+                else
+                    warn "fastfetch .deb download failed."
                 fi
             fi
             ;;
@@ -1459,15 +1459,12 @@ install_fastfetch() {
             if $PM_INSTALL fastfetch 2>/dev/null; then
                 FF_INSTALLED=true
             else
-                info "Not in repos — downloading from GitHub releases..."
-                FF_URL=$(curl -s --max-time 15 \
-                    https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
-                    | grep -oP '"browser_download_url":\s*"\K[^"]+linux-amd64\.rpm' \
-                    | head -1)
-                if [ -n "$FF_URL" ]; then
-                    curl -Lo /tmp/fastfetch.rpm "$FF_URL"
+                info "Not in dnf repos — downloading .rpm from GitHub..."
+                if curl -fL --max-time 60 -o /tmp/fastfetch.rpm "$FF_RPM_URL"; then
                     sudo rpm -i /tmp/fastfetch.rpm && FF_INSTALLED=true
                     rm -f /tmp/fastfetch.rpm
+                else
+                    warn "fastfetch .rpm download failed."
                 fi
             fi
             ;;
